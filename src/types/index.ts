@@ -57,6 +57,19 @@ export interface Sale {
   date: Date;
 }
 
+export interface Order {
+  id: string;
+  saleId: string;
+  userId: string;
+  userName: string;
+  items: SaleItem[];
+  total: number;
+  date: Date;
+  isPrepared: boolean;
+  preparedDate?: Date;
+  isPaid: boolean;
+}
+
 export interface FinancialRecord {
   id: string;
   date: Date;
