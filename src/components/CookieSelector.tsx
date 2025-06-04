@@ -21,18 +21,44 @@ const CookieSelector: React.FC = () => {
   const getMaxCookies = () => saleType === 'box4' ? 4 : saleType === 'box6' ? 6 : Infinity;
 
   // Price calculation based on size and sale type
-  const getBasePrice = () => {
-    const unitPrice = selectedSize === 'medium' ? 3 : 5;
-    switch (saleType) {
-      case 'box4':
-        return unitPrice * 4 * 0.9; // 10% discount for box of 4
-      case 'box6':
-        return unitPrice * 6 * 0.85; // 15% discount for box of 6
-      default:
-        return unitPrice;
+  // const getBasePrice = () => {
+  //   const unitPrice = selectedSize === 'medium' ? 3 : 5;
+
+  // const getBasePrice = (size: 'medium' | 'large' = selectedSize) => {
+  //   const unitPrice = size === 'medium' ? 4500 : 6000;
+  //   switch (saleType) {
+  //     case 'box4':
+  //       return unitPrice-500; // 4000 C/U
+  //     case 'box6':
+  //       return unitPrice * 6 * 0.85; // 15% discount for box of 6
+  //     default:
+  //       return unitPrice;
+  //   }
+  // };
+
+  const getBasePrice = (size: 'medium' | 'large' = selectedSize) => {
+    if (size === 'medium') {
+      switch (saleType) {
+        case 'box4':
+          return 16000/4;   // precio total de la caja de 4
+        case 'box6':
+          return 25000/6;   // precio total de la caja de 6
+        default:
+          return 4500;    // precio por unidad
+      }
+    } else {
+      switch (saleType) {
+        case 'box4':
+          return 22000/4;
+        case 'box6':
+          return 35000/6;
+        default:
+          return 6000;
+      }
     }
   };
 
+  
   const handleFlavorQuantityChange = (flavor: string, change: number) => {
     const currentQty = selectedFlavors[flavor] || 0;
     const newQty = Math.max(0, currentQty + change);
@@ -90,7 +116,8 @@ const CookieSelector: React.FC = () => {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               } transition-colors`}
             >
-              Mediana (${(selectedSize === 'medium' ? getBasePrice() : 3).toFixed(2)})
+              {/* Mediana (${(selectedSize === 'medium' ? getBasePrice() : 3).toFixed(2)}) */}
+              Mediana (${getBasePrice('medium').toFixed(2)})
             </button>
             <button
               type="button"
@@ -101,7 +128,8 @@ const CookieSelector: React.FC = () => {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               } transition-colors`}
             >
-              Grande (${(selectedSize === 'large' ? getBasePrice() : 5).toFixed(2)})
+              {/* Grande (${(selectedSize === 'large' ? getBasePrice() : 5).toFixed(2)}) */}
+              Grande (${getBasePrice('large').toFixed(2)})
             </button>
           </div>
         </div>

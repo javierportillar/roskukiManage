@@ -44,11 +44,13 @@ interface AppContextType {
 }
 
 const defaultFlavors: CookieFlavor[] = [
-  { id: uuidv4(), name: 'Chocolate Chip', available: true },
-  { id: uuidv4(), name: 'Oatmeal Raisin', available: true },
-  { id: uuidv4(), name: 'Sugar', available: true },
-  { id: uuidv4(), name: 'Peanut Butter', available: true },
-  { id: uuidv4(), name: 'Double Chocolate', available: true },
+  { id: uuidv4(), name: 'Chips Chocolate Relleno Nutela', available: true },
+  { id: uuidv4(), name: 'Chips Chocolate Relleno Naranja', available: true },
+  { id: uuidv4(), name: 'Red Velvet Relleno Nutella', available: true },
+  { id: uuidv4(), name: `M&m's Relleno Nutella`, available: true },
+  { id: uuidv4(), name: 'Oreo Rellenor Oreo', available: true },
+  { id: uuidv4(), name: 'Oreo Rellenor Nutella', available: true },
+
 ];
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
