@@ -85,7 +85,9 @@ const CookieSelector: React.FC = () => {
       // Add each selected flavor as a separate sale item
       Object.entries(selectedFlavors).forEach(([flavor, flavorQuantity]) => {
         if (flavorQuantity > 0) {
-          addToSale(flavor, selectedSize, quantity, basePrice, saleType, boxQuantity);
+          // addToSale(flavor, selectedSize, quantity, basePrice, saleType, boxQuantity);
+          const qtyToAdd = saleType === 'unit' ? flavorQuantity : quantity;
+          addToSale(flavor, selectedSize, qtyToAdd, basePrice, saleType, boxQuantity);
         }
       });
       

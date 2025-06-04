@@ -26,7 +26,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <Link to="/" className="flex items-center space-x-2 font-bold text-xl hover:text-amber-100 transition-colors">
             <CookieIcon className="h-8 w-8" />
-            <span>Cookie Manager</span>
+            <span>Controlador Roskuki</span>
           </Link>
           
           {/* Mobile menu button */}
@@ -88,7 +88,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Footer */}
       <footer className="bg-amber-800 text-amber-100 py-4">
         <div className="container mx-auto px-4 text-center">
-          <p>© {new Date().getFullYear()} Cookie Manager</p>
+          <p>© {new Date().getFullYear()} Controlador Roskuki</p>
         </div>
       </footer>
     </div>

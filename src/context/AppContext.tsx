@@ -6,6 +6,7 @@ import {
   CookieFlavor, 
   InventoryItem, 
   Sale, 
+  Order,
   FinancialRecord, 
   SaleItem,
   SaleType 
@@ -80,6 +81,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem('cookie-app-sales');
     return saved ? JSON.parse(saved) : [];
   });
+
+  const [orders, setOrders] = useState<Order[]>(() => {
+    const saved = localStorage.getItem('cookie-app-orders');
+    return saved ? JSON.parse(saved) : [];
+  });
   
   const [financialRecords, setFinancialRecords] = useState<FinancialRecord[]>(() => {
     const saved = localStorage.getItem('cookie-app-financial');
@@ -102,6 +108,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('cookie-app-sales', JSON.stringify(sales));
   }, [sales]);
+
+  useEffect(() => {
+    localStorage.setItem('cookie-app-orders', JSON.stringify(orders));
+  }, [orders]);
   
   useEffect(() => {
     localStorage.setItem('cookie-app-financial', JSON.stringify(financialRecords));
@@ -223,9 +233,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     
     setSales(prev => [...prev, newSale]);
     
-    // Add financial record for the sale
-    addFinancialRecord('income', `Sale to ${currentUser.name}`, saleTotal, 'Sales');
+    // // Add financial record for the sale
+    // addFinancialRecord('income', `Sale to ${currentUser.name}`, saleTotal, 'Sales');
+        // Create order from sale
+        addOrder(newSale);
     
+    // Order functions
+  
+
+  const markOrderPrepared = (orderId: string) => {
+    setOrders(prev =>
+      prev.map(order =>
+        order.id === orderId ? { ...order, prepared: true } : order
+      )
+    );
+  };
+
+  const markOrderPaid = (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    if (!order.paid) {
+      addFinancialRecord('income', `Venta ${order.userName}`, order.total, 'Ventas');
+    }
+    setOrders(prev =>
+      prev.map(o => (o.id === orderId ? { ...o, paid: true } : o))
+    );
+  };
     // Update inventory
     currentSale.forEach(item => {
       const totalCookies = item.saleType === 'unit' 
@@ -253,6 +286,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   
   const clearSale = () => {
     setCurrentSale([]);
+  };
+
+  const addOrder = (sale: Sale) => {
+    const newOrder: Order = { ...sale, isPrepared: false, isPaid: false };
+    setOrders(prev => [...prev, newOrder]);
   };
   
   // Financial functions
@@ -299,6 +337,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         
         sales,
         
+        orders,
+        addOrder,
+        markOrderPrepared,
+        markOrderPaid,
+
         financialRecords,
         addFinancialRecord,
       }}
