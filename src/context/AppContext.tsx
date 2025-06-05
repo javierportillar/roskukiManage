@@ -337,10 +337,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         
         sales,
         
-        orders,
-        addOrder,
-        markOrderPrepared,
-        markOrderPaid,
 
         financialRecords,
         addFinancialRecord,
