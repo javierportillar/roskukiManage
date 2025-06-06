@@ -38,6 +38,12 @@ interface AppContextType {
   
   // Sales History
   sales: Sale[];
+
+  // Orders
+  orders: Order[];
+  addOrder: (sale: Sale) => void;
+  markOrderPrepared: (orderId: string) => void;
+  markOrderPaid: (orderId: string) => void;
   
   // Financial Records
   financialRecords: FinancialRecord[];
@@ -244,7 +250,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const markOrderPrepared = (orderId: string) => {
     setOrders(prev =>
       prev.map(order =>
-        order.id === orderId ? { ...order, prepared: true } : order
+        order.id === orderId
+          ? { ...order, isPrepared: true, preparedDate: new Date() }
+          : order
       )
     );
   };
@@ -252,11 +260,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const markOrderPaid = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
-    if (!order.paid) {
+    if (!order.isPaid) {
       addFinancialRecord('income', `Venta ${order.userName}`, order.total, 'Ventas');
     }
     setOrders(prev =>
-      prev.map(o => (o.id === orderId ? { ...o, paid: true } : o))
+      prev.map(o => (o.id === orderId ? { ...o, isPaid: true } : o))
     );
   };
     // Update inventory
@@ -289,7 +297,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addOrder = (sale: Sale) => {
-    const newOrder: Order = { ...sale, isPrepared: false, isPaid: false };
+    const newOrder: Order = {
+      id: uuidv4(),
+      saleId: sale.id,
+      userId: sale.userId,
+      userName: sale.userName,
+      items: sale.items,
+      total: sale.total,
+      date: sale.date,
+      isPrepared: false,
+      isPaid: false,
+    };
     setOrders(prev => [...prev, newOrder]);
   };
   
@@ -337,6 +355,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         
         sales,
         
+        orders,
+        addOrder,
+        markOrderPrepared,
+        markOrderPaid,
 
         financialRecords,
         addFinancialRecord,
