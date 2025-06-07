@@ -52,7 +52,7 @@ const OrdersList: React.FC = () => {
       case 'prepared':
         return 'Preparado';
       case 'cancelled':
-        return 'Cancelado';
+        return 'Pagado';
       default:
         return 'Pendiente';
     }

@@ -435,49 +435,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!order || order.isCancelled) return;
 
     // If order was already prepared, we need to add back the inventory
-    if (order.isPrepared) {
-      order.items.forEach(item => {
-        const totalCookies = item.saleType === 'unit' 
-          ? item.quantity 
-          : item.quantity * (item.boxQuantity || 0);
+    // if (order.isPrepared) {
+    //   order.items.forEach(item => {
+    //     const totalCookies = item.saleType === 'unit' 
+    //       ? item.quantity 
+    //       : item.quantity * (item.boxQuantity || 0);
 
-        // Find existing inventory item or create new one
-        const existingInventoryItem = inventory.find(
-          inv => inv.flavor === item.flavor && inv.size === item.size
-        );
+    //     // Find existing inventory item or create new one
+    //     const existingInventoryItem = inventory.find(
+    //       inv => inv.flavor === item.flavor && inv.size === item.size
+    //     );
 
-        if (existingInventoryItem) {
-          setInventory(prev => 
-            prev.map(inv => 
-              inv.id === existingInventoryItem.id 
-                ? { ...inv, quantity: inv.quantity + totalCookies }
-                : inv
-            )
-          );
-        } else {
-          setInventory(prev => [
-            ...prev,
-            {
-              id: uuidv4(),
-              flavor: item.flavor,
-              size: item.size,
-              quantity: totalCookies,
-              createdAt: new Date(),
-            },
-          ]);
-        }
+    //     if (existingInventoryItem) {
+    //       setInventory(prev => 
+    //         prev.map(inv => 
+    //           inv.id === existingInventoryItem.id 
+    //             ? { ...inv, quantity: inv.quantity + totalCookies }
+    //             : inv
+    //         )
+    //       );
+    //     } else {
+    //       setInventory(prev => [
+    //         ...prev,
+    //         {
+    //           id: uuidv4(),
+    //           flavor: item.flavor,
+    //           size: item.size,
+    //           quantity: totalCookies,
+    //           createdAt: new Date(),
+    //         },
+    //       ]);
+    //     }
 
-        // Add movement record
-        addInventoryMovement(
-          item.flavor,
-          item.size,
-          totalCookies,
-          'addition',
-          `Pedido cancelado - ${order.userName}`,
-          orderId
-        );
-      });
-    }
+    //     // Add movement record
+    //     addInventoryMovement(
+    //       item.flavor,
+    //       item.size,
+    //       totalCookies,
+    //       'addition',
+    //       `Pedido cancelado - ${order.userName}`,
+    //       orderId
+    //     );
+    //   });
+    // }
 
     // Mark order as cancelled
     setOrders(prev =>
