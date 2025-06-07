@@ -20,7 +20,7 @@ const OrdersList: React.FC = () => {
     return items.reduce((total, item) => {
       const cookieCount = item.saleType === 'unit' 
         ? item.quantity 
-        : item.quantity * (item.boxQuantity || 0);
+        : item.quantity;
       return total + cookieCount;
     }, 0);
   };

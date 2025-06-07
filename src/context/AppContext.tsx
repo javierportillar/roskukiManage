@@ -145,13 +145,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     quantity: number,
     type: 'addition' | 'deduction',
     reason: string,
+    saleType: 'unit' | 'box4' | 'box6',
     orderId?: string
   ) => {
+    const adjustedQuantity = saleType === 'unit' ? quantity : 1;
+
     const movement: InventoryMovement = {
       id: uuidv4(),
       flavor,
       size,
-      quantity,
+      quantity: adjustedQuantity,
       type,
       reason,
       date: new Date(),
@@ -218,7 +221,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       sizeTyped,
       quantity,
       'addition',
-      'Añadido al inventario'
+      'Añadido al inventario',
+      'unit'
     );
   };
   
@@ -362,6 +366,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return; // Salir si no hay suficiente inventario
     }
   
+    // Marcar la orden como preparada
+    setOrders(prev =>
+      prev.map(order =>
+        order.id === orderId
+          ? { ...order, isPrepared: true, preparedDate: new Date() }
+          : order
+      )
+    );
+  };
+
+  const markOrderDelivered = (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    // if (!order || order.isDelivered || order.isCancelled) return;
+    if (!order || order.isDelivered) return;
+
+    
+
+    // Mark order as delivered
+    setOrders(prev =>
+      prev.map(o => (o.id === orderId ? { ...o, isDelivered: true, deliveredDate: new Date() } : o))
+    );
+
     // Deducir inventario para cada elemento de la orden
     order.items.forEach(item => {
       const totalCookies = item.saleType === 'unit' 
@@ -388,25 +414,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           totalCookies,
           'deduction',
           `Pedido preparado - ${order.userName}`,
+          item.saleType,
           orderId
         );
       }
     });
-  
-    // Marcar la orden como preparada
-    setOrders(prev =>
-      prev.map(order =>
-        order.id === orderId
-          ? { ...order, isPrepared: true, preparedDate: new Date() }
-          : order
-      )
-    );
   };
 
-  const markOrderDelivered = (orderId: string) => {
+  const markOrderCancelled = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
-    // if (!order || order.isDelivered || order.isCancelled) return;
-    if (!order || order.isDelivered) return;
+    if (!order || order.isCancelled) return;
 
     // Calculate total cookies in the order
     const totalCookies = order.items.reduce((total, item) => {
@@ -415,24 +432,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         : item.quantity * (item.boxQuantity || 0);
       return total + cookieCount;
     }, 0);
-
-    // Add financial record when order is delivered
-    addFinancialRecord(
-      'income', 
-      `Venta ${order.userName} (${totalCookies} galletas)`, 
-      order.total, 
-      'Ventas'
-    );
-
-    // Mark order as delivered
-    setOrders(prev =>
-      prev.map(o => (o.id === orderId ? { ...o, isDelivered: true, deliveredDate: new Date() } : o))
-    );
-  };
-
-  const markOrderCancelled = (orderId: string) => {
-    const order = orders.find(o => o.id === orderId);
-    if (!order || order.isCancelled) return;
 
     // If order was already prepared, we need to add back the inventory
     // if (order.isPrepared) {
@@ -478,7 +477,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     //     );
     //   });
     // }
-
+ // Add financial record when order is delivered
+  addFinancialRecord(
+  'income', 
+  `Venta ${order.userName} (${totalCookies} galletas)`, 
+  order.total, 
+  'Ventas'
+);
     // Mark order as cancelled
     setOrders(prev =>
       prev.map(o => (o.id === orderId ? { ...o, isCancelled: true, cancelledDate: new Date() } : o))
