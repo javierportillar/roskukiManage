@@ -8,9 +8,9 @@ const SalesHistory: React.FC = () => {
   const getSaleTypeLabel = (saleType: string, boxQuantity?: number) => {
     switch (saleType) {
       case 'box4':
-        return `Caja x4 (${boxQuantity! * 4} galletas)`;
+        return `Caja x4 (${boxQuantity!} galletas)`;
       case 'box6':
-        return `Caja x6 (${boxQuantity! * 6} galletas)`;
+        return `Caja x6 (${boxQuantity!} galletas)`;
       default:
         return 'Unidades';
     }
