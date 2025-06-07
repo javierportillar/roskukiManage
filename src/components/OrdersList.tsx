@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAppContext } from '../context/AppContext';
-import { Package2, Clock, CheckCircle, XCircle, Cookie, Truck } from 'lucide-react';
+import { Package2, Clock, CheckCircle, XCircle, Cookie, Truck, DollarSign } from 'lucide-react';
 
 const OrdersList: React.FC = () => {
   const { orders, markOrderPrepared, markOrderDelivered, markOrderCancelled } = useAppContext();
@@ -39,7 +39,7 @@ const OrdersList: React.FC = () => {
       case 'prepared':
         return 'bg-blue-50 border-blue-200 text-blue-800';
       case 'cancelled':
-        return 'bg-red-50 border-red-200 text-red-800';
+        return 'bg-purple-50 border-purple-200 text-purple-800';
       default:
         return 'bg-amber-50 border-amber-200 text-amber-800';
     }
@@ -194,15 +194,17 @@ const OrdersList: React.FC = () => {
                     </div>
                     
                     <div className={`flex items-center px-3 py-1 rounded-full text-xs ${
-                      order.isCancelled ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-500'
+                      // order.isCancelled ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-500'
+                      order.isCancelled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
+
                     }`}>
-                      <XCircle className="h-4 w-4 mr-1" />
-                      Cancelado {order.isCancelled ? '✓' : ''}
+                      <DollarSign className="h-4 w-4 mr-1" />
+                      Pagado {order.isCancelled ? '✓' : ''}
                     </div>
                   </div>
 
                   {/* Action Buttons */}
-                  {!order.isCancelled && (
+                  {/* {!order.isCancelled && ( */}
                     <div className="flex flex-wrap gap-2">
                       {!order.isPrepared && (
                         <button
@@ -223,18 +225,17 @@ const OrdersList: React.FC = () => {
                           Marcar como Entregado
                         </button>
                       )}
-                      
-                      {!order.isDelivered && (
+                      {!order.isCancelled && (
                         <button
                           onClick={() => markOrderCancelled(order.id)}
                           className="flex items-center px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm"
                         >
                           <XCircle className="h-4 w-4 mr-1" />
-                          Cancelar Pedido
+                          Marcar como Pagado
                         </button>
                       )}
                     </div>
-                  )}
+                  
                 </div>
               </div>
             );

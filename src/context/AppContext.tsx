@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { 
   User, 
   Cookie, 
+  CookieSize,
   CookieFlavor, 
   InventoryItem, 
   InventoryMovement,
@@ -137,6 +138,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [financialRecords]);
 
   // Helper function to add inventory movement
+
   const addInventoryMovement = (
     flavor: string,
     size: CookieSize,
@@ -291,31 +293,95 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setOrders(prev => [...prev, newOrder]);
   };
 
+  // const markOrderPrepared = (orderId: string) => {
+  //   const order = orders.find(o => o.id === orderId);
+  //   // if (!order || order.isPrepared || order.isCancelled) return;
+  //   if (!order || order.isPrepared) return;
+
+  //   // Deduct inventory when order is marked as prepared
+  //   order.items.forEach(item => {
+  //     const totalCookies = item.saleType === 'unit' 
+  //       ? item.quantity 
+  //       : item.quantity * (item.boxQuantity || 0);
+        
+  //     // Find and reduce inventory
+  //     const inventoryItem = inventory.find(
+  //       inv => inv.flavor === item.flavor && inv.size === item.size
+  //     );
+      
+  //     if (inventoryItem && inventoryItem.quantity >= totalCookies) {
+  //       setInventory(prev => 
+  //         prev.map(inv => 
+  //           inv.id === inventoryItem.id 
+  //             ? { ...inv, quantity: inv.quantity - totalCookies }
+  //             : inv
+  //         ).filter(inv => inv.quantity > 0) // Remove empty inventory items
+  //       );
+
+  //       // Add movement record
+  //       addInventoryMovement(
+  //         item.flavor,
+  //         item.size,
+  //         totalCookies,
+  //         'deduction',
+  //         `Pedido preparado - ${order.userName}`,
+  //         orderId
+  //       );
+  //     }
+  //   });
+
+  //   // Mark order as prepared
+  //   setOrders(prev =>
+  //     prev.map(order =>
+  //       order.id === orderId
+  //         ? { ...order, isPrepared: true, preparedDate: new Date() }
+  //         : order
+  //     )
+  //   );
+  // };
+
   const markOrderPrepared = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
-    if (!order || order.isPrepared || order.isCancelled) return;
-
-    // Deduct inventory when order is marked as prepared
+    if (!order || order.isPrepared) return;
+  
+    // Verificar si hay suficiente inventario para todos los elementos de la orden
+    const hasSufficientInventory = order.items.every(item => {
+      const totalCookies = item.saleType === 'unit' 
+        ? item.quantity 
+        : item.quantity * (item.boxQuantity || 0);
+  
+      const inventoryItem = inventory.find(
+        inv => inv.flavor === item.flavor && inv.size === item.size
+      );
+  
+      return inventoryItem && inventoryItem.quantity >= totalCookies;
+    });
+  
+    if (!hasSufficientInventory) {
+      console.error('No hay suficiente inventario para preparar esta orden.');
+      return; // Salir si no hay suficiente inventario
+    }
+  
+    // Deducir inventario para cada elemento de la orden
     order.items.forEach(item => {
       const totalCookies = item.saleType === 'unit' 
         ? item.quantity 
         : item.quantity * (item.boxQuantity || 0);
-        
-      // Find and reduce inventory
+  
       const inventoryItem = inventory.find(
         inv => inv.flavor === item.flavor && inv.size === item.size
       );
-      
-      if (inventoryItem && inventoryItem.quantity >= totalCookies) {
+  
+      if (inventoryItem) {
         setInventory(prev => 
           prev.map(inv => 
             inv.id === inventoryItem.id 
               ? { ...inv, quantity: inv.quantity - totalCookies }
               : inv
-          ).filter(inv => inv.quantity > 0) // Remove empty inventory items
+          ).filter(inv => inv.quantity > 0) // Eliminar elementos con cantidad 0
         );
-
-        // Add movement record
+  
+        // Registrar movimiento de inventario
         addInventoryMovement(
           item.flavor,
           item.size,
@@ -326,8 +392,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         );
       }
     });
-
-    // Mark order as prepared
+  
+    // Marcar la orden como preparada
     setOrders(prev =>
       prev.map(order =>
         order.id === orderId
@@ -339,7 +405,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const markOrderDelivered = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
-    if (!order || order.isDelivered || order.isCancelled) return;
+    // if (!order || order.isDelivered || order.isCancelled) return;
+    if (!order || order.isDelivered) return;
 
     // Calculate total cookies in the order
     const totalCookies = order.items.reduce((total, item) => {
