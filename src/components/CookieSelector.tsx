@@ -20,22 +20,6 @@ const CookieSelector: React.FC = () => {
   // Get max cookies based on box type
   const getMaxCookies = () => saleType === 'box4' ? 4 : saleType === 'box6' ? 6 : Infinity;
 
-  // Price calculation based on size and sale type
-  // const getBasePrice = () => {
-  //   const unitPrice = selectedSize === 'medium' ? 3 : 5;
-
-  // const getBasePrice = (size: 'medium' | 'large' = selectedSize) => {
-  //   const unitPrice = size === 'medium' ? 4500 : 6000;
-  //   switch (saleType) {
-  //     case 'box4':
-  //       return unitPrice-500; // 4000 C/U
-  //     case 'box6':
-  //       return unitPrice * 6 * 0.85; // 15% discount for box of 6
-  //     default:
-  //       return unitPrice;
-  //   }
-  // };
-
   const getBasePrice = (size: 'medium' | 'large' = selectedSize) => {
     if (size === 'medium') {
       switch (saleType) {
@@ -86,7 +70,8 @@ const CookieSelector: React.FC = () => {
       Object.entries(selectedFlavors).forEach(([flavor, flavorQuantity]) => {
         if (flavorQuantity > 0) {
           // addToSale(flavor, selectedSize, quantity, basePrice, saleType, boxQuantity);
-          const qtyToAdd = saleType === 'unit' ? flavorQuantity : quantity;
+          const qtyToAdd = saleType === 'unit' ? flavorQuantity : flavorQuantity * quantity;
+
           addToSale(flavor, selectedSize, qtyToAdd, basePrice, saleType, boxQuantity);
         }
       });

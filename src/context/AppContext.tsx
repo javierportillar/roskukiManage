@@ -348,7 +348,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const order = orders.find(o => o.id === orderId);
     if (!order || order.isPrepared) return;
     setOrders(prev =>
-      prev.map(o => (o.id === orderId ? { ...o, isDelivered: true, deliveredDate: new Date() } : o))
+      prev.map(order =>
+        order.id === orderId
+          ? { ...order, isPrepared: true, preparedDate: new Date() }
+          : order
+      )
     );
   };
 
@@ -411,11 +415,7 @@ order.items.forEach(item => {
   }
 });
     setOrders(prev =>
-      prev.map(order =>
-        order.id === orderId
-          ? { ...order, isPrepared: true, preparedDate: new Date() }
-          : order
-      )
+      prev.map(o => (o.id === orderId ? { ...o, isDelivered: true, deliveredDate: new Date() } : o))
     );
   };
 
@@ -427,7 +427,8 @@ order.items.forEach(item => {
     const totalCookies = order.items.reduce((total, item) => {
       const cookieCount = item.saleType === 'unit' 
         ? item.quantity 
-        : item.quantity * (item.boxQuantity || 0);
+        : item.quantity;
+        // : item.quantity * (item.boxQuantity || 0);
       return total + cookieCount;
     }, 0);
 
@@ -479,7 +480,7 @@ order.items.forEach(item => {
   addFinancialRecord(
   'income', 
   `Venta ${order.userName} (${totalCookies} galletas)`, 
-  order.total, 
+  order.total,
   'Ventas'
 );
     // Mark order as cancelled
