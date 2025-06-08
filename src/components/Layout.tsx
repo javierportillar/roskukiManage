@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Cookie, CookieIcon, BarChart3, Package, ShoppingCart, Menu, X, Users, ClipboardList } from 'lucide-react';
+import { CookieIcon, BarChart3, Package, ShoppingCart, Menu, X, Users, ClipboardList } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;

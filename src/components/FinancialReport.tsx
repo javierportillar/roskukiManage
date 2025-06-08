@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { BarChart3, ArrowUpRight, ArrowDownRight, Filter, Edit2, Trash2, Save, X } from 'lucide-react';
+import { FinancialRecord } from '../types';
 
 type PeriodFilter = 'all' | 'today' | 'week' | 'month';
 type TypeFilter = 'all' | 'income' | 'expense';
@@ -33,14 +34,16 @@ const FinancialReport: React.FC = () => {
           recordDate.getMonth() === today.getMonth() &&
           recordDate.getFullYear() === today.getFullYear()
         );
-      case 'week':
+      case 'week':{
         const oneWeekAgo = new Date();
         oneWeekAgo.setDate(today.getDate() - 7);
         return recordDate >= oneWeekAgo;
-      case 'month':
+      }
+      case 'month':{
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(today.getMonth() - 1);
         return recordDate >= oneMonthAgo;
+      }
       default:
         return true;
     }
@@ -75,7 +78,7 @@ const FinancialReport: React.FC = () => {
     return acc;
   }, {} as Record<string, { type: 'income' | 'expense'; category: string; amount: number }>);
 
-  const handleEditStart = (record: any) => {
+  const handleEditStart = (record: FinancialRecord) => {
     setEditingRecord(record.id);
     setEditForm({
       type: record.type,

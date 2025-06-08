@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAppContext } from '../context/AppContext';
+import { Order, SaleItem } from '../types';
 import { Package2, Clock, CheckCircle, XCircle, Cookie, Truck, DollarSign } from 'lucide-react';
 
 const OrdersList: React.FC = () => {
@@ -16,7 +17,7 @@ const OrdersList: React.FC = () => {
     }
   };
 
-  const getTotalCookies = (items: any[]) => {
+  const getTotalCookies = (items: SaleItem[]) => {
     return items.reduce((total, item) => {
       const cookieCount = item.saleType === 'unit' 
         ? item.quantity 
@@ -25,7 +26,7 @@ const OrdersList: React.FC = () => {
     }, 0);
   };
 
-  const getOrderStatus = (order: any) => {
+  const getOrderStatus = (order: Order) => {
     if (order.isCancelled) return 'cancelled';
     if (order.isDelivered) return 'delivered';
     if (order.isPrepared) return 'prepared';

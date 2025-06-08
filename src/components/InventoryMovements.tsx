@@ -22,14 +22,16 @@ const InventoryMovements: React.FC = () => {
           movementDate.getMonth() === today.getMonth() &&
           movementDate.getFullYear() === today.getFullYear()
         );
-      case 'week':
+      case 'week':{
         const oneWeekAgo = new Date();
         oneWeekAgo.setDate(today.getDate() - 7);
         return movementDate >= oneWeekAgo;
-      case 'month':
+      }
+      case 'month':{
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(today.getMonth() - 1);
         return movementDate >= oneMonthAgo;
+      }
       default:
         return true;
     }

@@ -2,7 +2,6 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { 
   User, 
-  Cookie, 
   CookieSize,
   CookieFlavor, 
   InventoryItem, 
@@ -58,11 +57,13 @@ interface AppContextType {
 
 const defaultFlavors: CookieFlavor[] = [
   { id: uuidv4(), name: 'Chips Chocolate Relleno Nutela', available: true },
-  { id: uuidv4(), name: 'Chips Chocolate Relleno Naranja', available: true },
   { id: uuidv4(), name: 'Red Velvet Relleno Nutella', available: true },
   { id: uuidv4(), name: `M&m's Relleno Nutella`, available: true },
-  { id: uuidv4(), name: 'Oreo Rellenor Oreo', available: true },
-  { id: uuidv4(), name: 'Oreo Rellenor Nutella', available: true },
+  { id: uuidv4(), name: 'Oreo Relleno Oreo', available: true },
+  { id: uuidv4(), name: 'Oreo Relleno Nutella', available: true },
+  { id: uuidv4(), name: 'Galleta Galak', available: true },
+  { id: uuidv4(), name: 'Galleta Nucita', available: true },
+  { id: uuidv4(), name: 'Chocolatina Jet', available: true },
 ];
 
 const AppContext = createContext<AppContextType | undefined>(undefined);

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { User } from '../types';
 import { useAppContext } from '../context/AppContext';
 import { UserPlus, User as UserIcon, X } from 'lucide-react';
 
