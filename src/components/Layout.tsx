@@ -11,7 +11,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
 
   const navItems = [
-    { path: '/', label: 'Ventas', icon: <ShoppingCart className="w-5 h-5" /> },
+    { path: '/ventas', label: 'Ventas', icon: <ShoppingCart className="w-5 h-5" /> },
     { path: '/orders', label: 'Pedidos', icon: <ClipboardList className="w-5 h-5" /> },
     { path: '/inventory', label: 'Inventario', icon: <Package className="w-5 h-5" /> },
     { path: '/financial', label: 'Finanzas', icon: <BarChart3 className="w-5 h-5" /> },
@@ -25,7 +25,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Header */}
       <header className="bg-gradient-to-r from-amber-700 to-amber-600 text-white shadow-md">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <Link to="/" className="flex items-center space-x-2 font-bold text-xl hover:text-amber-100 transition-colors">
+          <Link to="/ventas" className="flex items-center space-x-2 font-bold text-xl hover:text-amber-100 transition-colors">
             <CookieIcon className="h-8 w-8" />
             <span>Controlador Roskuki</span>
           </Link>

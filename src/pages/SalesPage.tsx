@@ -12,7 +12,7 @@ const SalesPage: React.FC = () => {
     <div>
       <h1 className="text-2xl font-bold text-amber-900 mb-6">Gestión de Ventas</h1>
       
-      {/* Tab Navigation */}
+      {/* <!-- Tab Navigation --> */}
       <div className="flex space-x-2 mb-6">
         <button
           onClick={() => setActiveTab('current')}
