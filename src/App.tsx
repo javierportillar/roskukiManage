@@ -14,7 +14,7 @@ function App() {
       <Router>
         <Layout>
           <Routes>
-            <Route path="/" element={<Navigate to="/ventas" replace />} />
+            <Route path="/roskukiManage" element={<Navigate to="/ventas" replace />} />
             <Route path="/ventas" element={<SalesPage />} />
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
