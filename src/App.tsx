@@ -6,6 +6,7 @@ import OrdersPage from './pages/OrdersPage';
 import InventoryPage from './pages/InventoryPage';
 import FinancialPage from './pages/FinancialPage';
 import CustomersPage from './pages/CustomersPage';
+import BackupPage from './pages/BackupPage';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/financial" element={<FinancialPage />} />
             <Route path="/customers" element={<CustomersPage />} />
+            <Route path="/backup" element={<BackupPage />} />
           </Routes>
         </Layout>
       </Router>

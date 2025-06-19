@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { CookieIcon, BarChart3, Package, ShoppingCart, Menu, X, Users, ClipboardList } from 'lucide-react';
+import { CookieIcon, BarChart3, Package, ShoppingCart, Menu, X, Users, ClipboardList, Download } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -16,6 +16,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/inventory', label: 'Inventario', icon: <Package className="w-5 h-5" /> },
     { path: '/financial', label: 'Finanzas', icon: <BarChart3 className="w-5 h-5" /> },
     { path: '/customers', label: 'Clientes', icon: <Users className="w-5 h-5" /> },
+    { path: '/backup', label: 'Exportar', icon: <Download className="w-5 h-5" /> },
+
   ];
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);

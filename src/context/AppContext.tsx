@@ -165,6 +165,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
   
   // User functions
+  
+  // Helper function to update user statistics
+
+  // IMPORTANTE REVISAR TOTALCOOKIES PARA MANDAR VALOR CORRECTO DE GALLETAS
+  const updateUserStats = (userId: string, orderItems: SaleItem[]) => {
+    setUsers(prev => prev.map(user => {
+      if (user.id !== userId) return user;
+
+      let totalCookies = 0;
+      let box4Count = 0;
+      let box6Count = 0;
+
+      orderItems.forEach(item => {
+        if (item.saleType === 'unit') {
+          totalCookies += item.quantity;
+        } else if (item.saleType === 'box4') {
+          totalCookies += item.quantity * 4;
+          box4Count += item.quantity;
+        } else if (item.saleType === 'box6') {
+          totalCookies += item.quantity * 6;
+          box6Count += item.quantity;
+        }
+      });
+
+      return {
+        ...user,
+        orderCount: user.orderCount + 1,
+        totalCookies: user.totalCookies + totalCookies,
+        box4Count: user.box4Count + box4Count,
+        box6Count: user.box6Count + box6Count,
+      };
+    }));
+  };
   const addUser = (name: string, email?: string, phone?: string, address?: string): User => {
     const newUser = {
       id: uuidv4(),
@@ -298,53 +331,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setOrders(prev => [...prev, newOrder]);
   };
 
-  // const markOrderPrepared = (orderId: string) => {
-  //   const order = orders.find(o => o.id === orderId);
-  //   // if (!order || order.isPrepared || order.isCancelled) return;
-  //   if (!order || order.isPrepared) return;
-
-  //   // Deduct inventory when order is marked as prepared
-  //   order.items.forEach(item => {
-  //     const totalCookies = item.saleType === 'unit' 
-  //       ? item.quantity 
-  //       : item.quantity * (item.boxQuantity || 0);
-        
-  //     // Find and reduce inventory
-  //     const inventoryItem = inventory.find(
-  //       inv => inv.flavor === item.flavor && inv.size === item.size
-  //     );
-      
-  //     if (inventoryItem && inventoryItem.quantity >= totalCookies) {
-  //       setInventory(prev => 
-  //         prev.map(inv => 
-  //           inv.id === inventoryItem.id 
-  //             ? { ...inv, quantity: inv.quantity - totalCookies }
-  //             : inv
-  //         ).filter(inv => inv.quantity > 0) // Remove empty inventory items
-  //       );
-
-  //       // Add movement record
-  //       addInventoryMovement(
-  //         item.flavor,
-  //         item.size,
-  //         totalCookies,
-  //         'deduction',
-  //         `Pedido preparado - ${order.userName}`,
-  //         orderId
-  //       );
-  //     }
-  //   });
-
-  //   // Mark order as prepared
-  //   setOrders(prev =>
-  //     prev.map(order =>
-  //       order.id === orderId
-  //         ? { ...order, isPrepared: true, preparedDate: new Date() }
-  //         : order
-  //     )
-  //   );
-  // };
-
   const markOrderPrepared = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (!order || order.isPrepared) return;
@@ -359,47 +345,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const markOrderDelivered = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
-    // if (!order || order.isDelivered || order.isCancelled) return;
     if (!order || order.isDelivered) return;
-    // Mark order as delivered
 
-  // Verificar si hay suficiente inventario para todos los elementos de la orden
-    // const hasSufficientInventory = order.items.every(item => {
-    //   const totalCookies = item.saleType === 'unit' 
-    //     ? item.quantity 
-    //     : item.quantity * (item.boxQuantity || 0);
-  
-    //   const inventoryItem = inventory.find(
-    //     inv => inv.flavor === item.flavor && inv.size === item.size
-    //   );
-  
-    //   return inventoryItem && inventoryItem.quantity >= totalCookies;
-    // });
-  
-    // if (!hasSufficientInventory) {
-    //   console.error('No hay suficiente inventario para preparar esta orden.');
-    //   return; // Salir si no hay suficiente inventario
-    // }
-  
-    // Marcar la orden como preparada
     // Verificar si hay suficiente inventario para todos los elementos de la orden
-const hasSufficientInventory = order.items.every(item => {
-  // La cantidad total de galletas para este sabor
-  const totalCookies = item.quantity; // Aquí `quantity` ya representa la cantidad específica de este sabor
+    const hasSufficientInventory = order.items.every(item => {
+      // La cantidad total de galletas para este sabor
+      const totalCookies = item.quantity; // Aquí `quantity` ya representa la cantidad específica de este sabor
 
-  // Buscar el inventario para el sabor y tamaño específico
-  const inventoryItem = inventory.find(
-    inv => inv.flavor === item.flavor && inv.size === item.size
-  );
+      // Buscar el inventario para el sabor y tamaño específico
+      const inventoryItem = inventory.find(
+        inv => inv.flavor === item.flavor && inv.size === item.size
+      );
 
-  // Verificar si hay suficiente cantidad en el inventario
-  return inventoryItem && inventoryItem.quantity >= totalCookies;
-});
+    // Verificar si hay suficiente cantidad en el inventario
+    return inventoryItem && inventoryItem.quantity >= totalCookies;
+    });
 
 if (!hasSufficientInventory) {
   console.error('No hay suficiente inventario para preparar esta orden.');
   return; // Salir si no hay suficiente inventario
 }
+
 // Deducir el inventario para cada elemento de la orden
 order.items.forEach(item => {
   // La cantidad total de galletas para este sabor
@@ -433,50 +399,7 @@ order.items.forEach(item => {
       return total + cookieCount;
     }, 0);
 
-    // If order was already prepared, we need to add back the inventory
-    // if (order.isPrepared) {
-    //   order.items.forEach(item => {
-    //     const totalCookies = item.saleType === 'unit' 
-    //       ? item.quantity 
-    //       : item.quantity * (item.boxQuantity || 0);
-
-    //     // Find existing inventory item or create new one
-    //     const existingInventoryItem = inventory.find(
-    //       inv => inv.flavor === item.flavor && inv.size === item.size
-    //     );
-
-    //     if (existingInventoryItem) {
-    //       setInventory(prev => 
-    //         prev.map(inv => 
-    //           inv.id === existingInventoryItem.id 
-    //             ? { ...inv, quantity: inv.quantity + totalCookies }
-    //             : inv
-    //         )
-    //       );
-    //     } else {
-    //       setInventory(prev => [
-    //         ...prev,
-    //         {
-    //           id: uuidv4(),
-    //           flavor: item.flavor,
-    //           size: item.size,
-    //           quantity: totalCookies,
-    //           createdAt: new Date(),
-    //         },
-    //       ]);
-    //     }
-
-    //     // Add movement record
-    //     addInventoryMovement(
-    //       item.flavor,
-    //       item.size,
-    //       totalCookies,
-    //       'addition',
-    //       `Pedido cancelado - ${order.userName}`,
-    //       orderId
-    //     );
-    //   });
-    // }
+    
  // Add financial record when order is delivered
   addFinancialRecord(
   'income', 
