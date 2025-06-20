@@ -92,3 +92,24 @@ export interface FinancialRecord {
   amount: number;
   category: string;
 }
+
+export type AppContextType = {
+  users: User[];
+  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
+  currentUser: User | null;
+  setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
+  flavors: CookieFlavor[];
+  setFlavors: React.Dispatch<React.SetStateAction<CookieFlavor[]>>;
+  inventory: InventoryItem[];
+  setInventory: React.Dispatch<React.SetStateAction<InventoryItem[]>>;
+  inventoryMovements: InventoryMovement[];
+  setInventoryMovements: React.Dispatch<React.SetStateAction<InventoryMovement[]>>;
+  currentSale: SaleItem[];
+  setCurrentSale: React.Dispatch<React.SetStateAction<SaleItem[]>>;
+  sales: Sale[];
+  setSales: React.Dispatch<React.SetStateAction<Sale[]>>;
+  orders: Order[];
+  setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
+  financialRecords: FinancialRecord[];
+  setFinancialRecords: React.Dispatch<React.SetStateAction<FinancialRecord[]>>;
+};
