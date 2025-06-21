@@ -25,16 +25,19 @@ export interface AppContextType {
   currentUser: User | null;
   addUser: (name: string, email?: string, phone?: string, address?: string) => Promise<User>;
   selectUser: (userId: string) => void;
+  setUsers: (users: User[]) => void;
   
   // Cookies & Flavors
   flavors: CookieFlavor[];
   addFlavor: (name: string) => Promise<void>;
   toggleFlavorAvailability: (id: string) => Promise<void>;
+  setFlavors: (flavors: CookieFlavor[]) => void;
   
   // Inventory
   inventory: InventoryItem[];
   inventoryMovements: InventoryMovement[];
   addToInventory: (flavor: string, size: string, quantity: number) => Promise<void>;
+  setInventory: (inventory: InventoryItem[]) => void;
   
   // Sales
   currentSale: SaleItem[];
@@ -46,19 +49,22 @@ export interface AppContextType {
   
   // Sales History
   sales: Sale[];
+  setSales: (sales: Sale[]) => void;
 
   // Orders
   orders: Order[];
   addOrder: (sale: Sale) => Promise<void>;
   markOrderPrepared: (orderId: string) => Promise<void>;
   markOrderDelivered: (orderId: string) => Promise<void>;
-  markOrderPaid: (orderId: string) => Promise<void>; // Cambié de markOrderCancelled
+  markOrderPaid: (orderId: string) => Promise<void>;
+  setOrders: (orders: Order[]) => void;
   
   // Financial Records
   financialRecords: FinancialRecord[];
   addFinancialRecord: (type: 'income' | 'expense', description: string, amount: number, category: string) => Promise<void>;
   updateFinancialRecord: (id: string, type: 'income' | 'expense', description: string, amount: number, category: string) => Promise<void>;
   deleteFinancialRecord: (id: string) => Promise<void>;
+  setFinancialRecords: (records: FinancialRecord[]) => void;
 
   // Sync functions
   syncData: () => Promise<void>;
@@ -79,23 +85,23 @@ const defaultFlavors: CookieFlavor[] = [
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isConnected } = useSupabase();
+  const { isConnected, isLoading: supabaseLoading } = useSupabase();
   const [isLoading, setIsLoading] = useState(false);
 
   // Load data from localStorage or initialize with defaults
-  const [users, setUsers] = useState<User[]>(() => {
+  const [users, setUsersState] = useState<User[]>(() => {
     const saved = localStorage.getItem('cookie-app-users');
     return saved ? JSON.parse(saved) : [];
   });
   
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   
-  const [flavors, setFlavors] = useState<CookieFlavor[]>(() => {
+  const [flavors, setFlavorsState] = useState<CookieFlavor[]>(() => {
     const saved = localStorage.getItem('cookie-app-flavors');
     return saved ? JSON.parse(saved) : defaultFlavors;
   });
   
-  const [inventory, setInventory] = useState<InventoryItem[]>(() => {
+  const [inventory, setInventoryState] = useState<InventoryItem[]>(() => {
     const saved = localStorage.getItem('cookie-app-inventory');
     return saved ? JSON.parse(saved) : [];
   });
@@ -107,20 +113,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   
   const [currentSale, setCurrentSale] = useState<SaleItem[]>([]);
   
-  const [sales, setSales] = useState<Sale[]>(() => {
+  const [sales, setSalesState] = useState<Sale[]>(() => {
     const saved = localStorage.getItem('cookie-app-sales');
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [orders, setOrders] = useState<Order[]>(() => {
+  const [orders, setOrdersState] = useState<Order[]>(() => {
     const saved = localStorage.getItem('cookie-app-orders');
     return saved ? JSON.parse(saved) : [];
   });
   
-  const [financialRecords, setFinancialRecords] = useState<FinancialRecord[]>(() => {
+  const [financialRecords, setFinancialRecordsState] = useState<FinancialRecord[]>(() => {
     const saved = localStorage.getItem('cookie-app-financial');
     return saved ? JSON.parse(saved) : [];
   });
+
+  // Wrapper functions to update both state and localStorage
+  const setUsers = (newUsers: User[]) => {
+    setUsersState(newUsers);
+    localStorage.setItem('cookie-app-users', JSON.stringify(newUsers));
+  };
+
+  const setFlavors = (newFlavors: CookieFlavor[]) => {
+    setFlavorsState(newFlavors);
+    localStorage.setItem('cookie-app-flavors', JSON.stringify(newFlavors));
+  };
+
+  const setInventory = (newInventory: InventoryItem[]) => {
+    setInventoryState(newInventory);
+    localStorage.setItem('cookie-app-inventory', JSON.stringify(newInventory));
+  };
+
+  const setSales = (newSales: Sale[]) => {
+    setSalesState(newSales);
+    localStorage.setItem('cookie-app-sales', JSON.stringify(newSales));
+  };
+
+  const setOrders = (newOrders: Order[]) => {
+    setOrdersState(newOrders);
+    localStorage.setItem('cookie-app-orders', JSON.stringify(newOrders));
+  };
+
+  const setFinancialRecords = (newRecords: FinancialRecord[]) => {
+    setFinancialRecordsState(newRecords);
+    localStorage.setItem('cookie-app-financial', JSON.stringify(newRecords));
+  };
   
   // Save to localStorage whenever state changes
   useEffect(() => {
@@ -153,17 +190,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Load data from Supabase when connected
   useEffect(() => {
-    if (isConnected) {
+    if (isConnected && !supabaseLoading) {
+      console.log('Cargando datos desde Supabase...');
       loadData();
     }
-  }, [isConnected]);
+  }, [isConnected, supabaseLoading]);
 
   // Data loading function
   const loadData = async () => {
-    if (!isConnected) return;
+    if (!isConnected) {
+      console.log('No conectado a Supabase, usando datos locales');
+      return;
+    }
     
     setIsLoading(true);
     try {
+      console.log('Iniciando carga de datos...');
+      
       const [
         cloudUsers,
         cloudFlavors,
@@ -182,8 +225,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         SupabaseService.getFinancialRecords()
       ]);
 
+      console.log('Datos cargados:', {
+        users: cloudUsers.length,
+        flavors: cloudFlavors.length,
+        inventory: cloudInventory.length,
+        movements: cloudInventoryMovements.length,
+        sales: cloudSales.length,
+        orders: cloudOrders.length,
+        financial: cloudFinancialRecords.length
+      });
+
       setUsers(cloudUsers);
-      setFlavors(cloudFlavors);
+      setFlavors(cloudFlavors.length > 0 ? cloudFlavors : defaultFlavors);
       setInventory(cloudInventory);
       setInventoryMovements(cloudInventoryMovements);
       setSales(cloudSales);
@@ -253,13 +306,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (isConnected) {
       try {
+        console.log('Creando usuario en Supabase:', userData);
         const newUser = await SupabaseService.createUser(userData);
-        setUsers(prev => [newUser, ...prev]);
+        console.log('Usuario creado:', newUser);
+        setUsers([newUser, ...users]);
         setCurrentUser(newUser);
         return newUser;
       } catch (error) {
         console.error('Error creating user:', error);
-        throw error;
+        // Fallback to local storage
+        const newUser: User = {
+          ...userData,
+          id: uuidv4(),
+          createdAt: new Date(),
+        };
+        setUsers([newUser, ...users]);
+        setCurrentUser(newUser);
+        return newUser;
       }
     } else {
       // Local fallback
@@ -268,7 +331,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: uuidv4(),
         createdAt: new Date(),
       };
-      setUsers(prev => [newUser, ...prev]);
+      setUsers([newUser, ...users]);
       setCurrentUser(newUser);
       return newUser;
     }
@@ -285,11 +348,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (isConnected) {
       try {
+        console.log('Creando sabor en Supabase:', flavorData);
         const newFlavor = await SupabaseService.createFlavor(flavorData);
-        setFlavors(prev => [...prev, newFlavor]);
+        console.log('Sabor creado:', newFlavor);
+        setFlavors([...flavors, newFlavor]);
       } catch (error) {
         console.error('Error creating flavor:', error);
-        throw error;
+        // Fallback to local storage
+        const newFlavor: CookieFlavor = {
+          ...flavorData,
+          id: uuidv4(),
+        };
+        setFlavors([...flavors, newFlavor]);
       }
     } else {
       // Local fallback
@@ -297,7 +367,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ...flavorData,
         id: uuidv4(),
       };
-      setFlavors(prev => [...prev, newFlavor]);
+      setFlavors([...flavors, newFlavor]);
     }
   };
   
@@ -310,18 +380,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (isConnected) {
       try {
         await SupabaseService.updateFlavor(id, updatedFlavor);
-        setFlavors(prev => 
-          prev.map(f => f.id === id ? updatedFlavor : f)
-        );
+        setFlavors(flavors.map(f => f.id === id ? updatedFlavor : f));
       } catch (error) {
         console.error('Error updating flavor:', error);
-        throw error;
+        // Fallback to local update
+        setFlavors(flavors.map(f => f.id === id ? updatedFlavor : f));
       }
     } else {
       // Local fallback
-      setFlavors(prev => 
-        prev.map(f => f.id === id ? updatedFlavor : f)
-      );
+      setFlavors(flavors.map(f => f.id === id ? updatedFlavor : f));
     }
   };
   
@@ -336,8 +403,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (isConnected) {
       try {
+        console.log('Añadiendo al inventario en Supabase:', inventoryData);
         const newItem = await SupabaseService.createInventoryItem(inventoryData);
-        setInventory(prev => [newItem, ...prev]);
+        console.log('Item de inventario creado:', newItem);
+        setInventory([newItem, ...inventory]);
         
         // Add movement record
         await addInventoryMovement(
@@ -349,7 +418,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         );
       } catch (error) {
         console.error('Error adding to inventory:', error);
-        throw error;
+        // Fallback to local storage
+        const newItem: InventoryItem = {
+          ...inventoryData,
+          id: uuidv4(),
+          createdAt: new Date(),
+        };
+        setInventory([newItem, ...inventory]);
+        
+        await addInventoryMovement(
+          flavor,
+          sizeTyped,
+          quantity,
+          'addition',
+          'Añadido al inventario'
+        );
       }
     } else {
       // Local fallback
@@ -358,7 +441,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: uuidv4(),
         createdAt: new Date(),
       };
-      setInventory(prev => [newItem, ...prev]);
+      setInventory([newItem, ...inventory]);
       
       await addInventoryMovement(
         flavor,
@@ -449,11 +532,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (isConnected) {
       try {
+        console.log('Creando pedido en Supabase:', orderData);
         const newOrder = await SupabaseService.createOrder(orderData);
-        setOrders(prev => [newOrder, ...prev]);
+        console.log('Pedido creado:', newOrder);
+        setOrders([newOrder, ...orders]);
       } catch (error) {
         console.error('Error creating order:', error);
-        throw error;
+        // Fallback to local storage
+        const newOrder: Order = {
+          ...orderData,
+          id: uuidv4(),
+          date: new Date(),
+          items: orderData.items.map(item => ({ ...item, orderId: uuidv4() })),
+        };
+        setOrders([newOrder, ...orders]);
       }
     } else {
       // Local fallback
@@ -463,7 +555,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         date: new Date(),
         items: orderData.items.map(item => ({ ...item, orderId: uuidv4() })),
       };
-      setOrders(prev => [newOrder, ...prev]);
+      setOrders([newOrder, ...orders]);
     }
   };
 
@@ -477,22 +569,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           isPrepared: true,
           preparedDate: new Date()
         });
-        setOrders(prev =>
-          prev.map(o => o.id === orderId ? updatedOrder : o)
-        );
+        setOrders(orders.map(o => o.id === orderId ? updatedOrder : o));
       } catch (error) {
         console.error('Error updating order:', error);
-        throw error;
-      }
-    } else {
-      // Local fallback
-      setOrders(prev =>
-        prev.map(o =>
+        // Fallback to local update
+        setOrders(orders.map(o =>
           o.id === orderId
             ? { ...o, isPrepared: true, preparedDate: new Date() }
             : o
-        )
-      );
+        ));
+      }
+    } else {
+      // Local fallback
+      setOrders(orders.map(o =>
+        o.id === orderId
+          ? { ...o, isPrepared: true, preparedDate: new Date() }
+          : o
+      ));
     }
   };
 
@@ -506,22 +599,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           isDelivered: true,
           deliveredDate: new Date()
         });
-        setOrders(prev =>
-          prev.map(o => o.id === orderId ? updatedOrder : o)
-        );
+        setOrders(orders.map(o => o.id === orderId ? updatedOrder : o));
         
         // Reload inventory to reflect changes from triggers
         await loadData();
       } catch (error) {
         console.error('Error updating order:', error);
-        throw error;
+        // Fallback to local update
+        setOrders(orders.map(o => (o.id === orderId ? { ...o, isDelivered: true, deliveredDate: new Date() } : o)));
       }
     } else {
       // Local fallback with inventory deduction
-      // ... (mantener lógica local existente)
-      setOrders(prev =>
-        prev.map(o => (o.id === orderId ? { ...o, isDelivered: true, deliveredDate: new Date() } : o))
-      );
+      setOrders(orders.map(o =>
+        o.id === orderId ? { ...o, isDelivered: true, deliveredDate: new Date() } : o
+      ));
     }
   };
 
@@ -534,22 +625,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const cookieCount = item.saleType === 'unit' 
         ? item.quantity 
         : item.quantity;
-        // : item.quantity * (item.boxQuantity || 0);
       return total + cookieCount;
     }, 0);
 
-    
- // Add financial record when order is delivered
-  addFinancialRecord(
-  'income', 
-  `Venta ${order.userName} (${totalCookies} galletas)`, 
-  order.total,
-  'Ventas'
-);
-    // Mark order as cancelled
-    setOrders(prev =>
-      prev.map(o => (o.id === orderId ? { ...o, isCancelled: true, cancelledDate: new Date() } : o))
+    // Add financial record when order is paid
+    await addFinancialRecord(
+      'income', 
+      `Venta ${order.userName} (${totalCookies} galletas)`, 
+      order.total,
+      'Ventas'
     );
+
+    if (isConnected) {
+      try {
+        const updatedOrder = await SupabaseService.updateOrder(orderId, { 
+          isPaid: true,
+          paidDate: new Date()
+        });
+        setOrders(orders.map(o => o.id === orderId ? updatedOrder : o));
+      } catch (error) {
+        console.error('Error updating order:', error);
+        // Fallback to local update
+        setOrders(orders.map(o => (o.id === orderId ? { ...o, isPaid: true, paidDate: new Date() } : o)));
+      }
+    } else {
+      // Local fallback
+      setOrders(orders.map(o => (o.id === orderId ? { ...o, isPaid: true, paidDate: new Date() } : o)));
+    }
   };
   
   const completeSale = async () => {
@@ -566,8 +668,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (isConnected) {
       try {
+        console.log('Completando venta en Supabase:', saleData);
         const newSale = await SupabaseService.createSale(saleData);
-        setSales(prev => [newSale, ...prev]);
+        console.log('Venta completada:', newSale);
+        setSales([newSale, ...sales]);
         
         // Create order from sale
         await addOrder(newSale);
@@ -575,7 +679,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearSale();
       } catch (error) {
         console.error('Error completing sale:', error);
-        throw error;
+        // Fallback to local storage
+        const newSale: Sale = {
+          ...saleData,
+          id: uuidv4(),
+          date: new Date(),
+        };
+        
+        setSales([newSale, ...sales]);
+        await addOrder(newSale);
+        clearSale();
       }
     } else {
       // Local fallback
@@ -585,7 +698,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         date: new Date(),
       };
       
-      setSales(prev => [newSale, ...prev]);
+      setSales([newSale, ...sales]);
       await addOrder(newSale);
       clearSale();
     }
@@ -611,11 +724,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (isConnected) {
       try {
+        console.log('Creando registro financiero en Supabase:', recordData);
         const newRecord = await SupabaseService.createFinancialRecord(recordData);
-        setFinancialRecords(prev => [newRecord, ...prev]);
+        console.log('Registro financiero creado:', newRecord);
+        setFinancialRecords([newRecord, ...financialRecords]);
       } catch (error) {
         console.error('Error creating financial record:', error);
-        throw error;
+        // Fallback to local storage
+        const newRecord: FinancialRecord = {
+          ...recordData,
+          id: uuidv4(),
+          date: new Date(),
+        };
+        setFinancialRecords([newRecord, ...financialRecords]);
       }
     } else {
       // Local fallback
@@ -624,7 +745,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: uuidv4(),
         date: new Date(),
       };
-      setFinancialRecords(prev => [newRecord, ...prev]);
+      setFinancialRecords([newRecord, ...financialRecords]);
     }
   };
 
@@ -640,20 +761,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (isConnected) {
       try {
         const updatedRecord = await SupabaseService.updateFinancialRecord(id, updates);
-        setFinancialRecords(prev =>
-          prev.map(record => record.id === id ? updatedRecord : record)
-        );
+        setFinancialRecords(financialRecords.map(record => record.id === id ? updatedRecord : record));
       } catch (error) {
         console.error('Error updating financial record:', error);
-        throw error;
+        // Fallback to local update
+        setFinancialRecords(financialRecords.map(record =>
+          record.id === id ? { ...record, ...updates } : record
+        ));
       }
     } else {
       // Local fallback
-      setFinancialRecords(prev =>
-        prev.map(record =>
-          record.id === id ? { ...record, ...updates } : record
-        )
-      );
+      setFinancialRecords(financialRecords.map(record =>
+        record.id === id ? { ...record, ...updates } : record
+      ));
     }
   };
 
@@ -661,14 +781,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (isConnected) {
       try {
         await SupabaseService.deleteFinancialRecord(id);
-        setFinancialRecords(prev => prev.filter(record => record.id !== id));
+        setFinancialRecords(financialRecords.filter(record => record.id !== id));
       } catch (error) {
         console.error('Error deleting financial record:', error);
-        throw error;
+        // Fallback to local delete
+        setFinancialRecords(financialRecords.filter(record => record.id !== id));
       }
     } else {
       // Local fallback
-      setFinancialRecords(prev => prev.filter(record => record.id !== id));
+      setFinancialRecords(financialRecords.filter(record => record.id !== id));
     }
   };
   
@@ -676,20 +797,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider
       value={{
         isConnected,
-        isLoading,
+        isLoading: isLoading || supabaseLoading,
         
         users,
         currentUser,
         addUser,
         selectUser,
+        setUsers,
         
         flavors,
         addFlavor,
         toggleFlavorAvailability,
+        setFlavors,
         
         inventory,
         inventoryMovements,
         addToInventory,
+        setInventory,
         
         currentSale,
         addToSale,
@@ -699,17 +823,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearSale,
         
         sales,
+        setSales,
         
         orders,
         addOrder,
         markOrderPrepared,
         markOrderDelivered,
         markOrderPaid,
+        setOrders,
 
         financialRecords,
         addFinancialRecord,
         updateFinancialRecord,
         deleteFinancialRecord,
+        setFinancialRecords,
 
         syncData,
         loadData,

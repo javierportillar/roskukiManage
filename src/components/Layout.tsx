@@ -111,6 +111,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="container mx-auto">
             <p className="text-yellow-800 text-sm text-center">
               ⚠️ Trabajando en modo local. Los datos no se sincronizan entre dispositivos.
+              {isLoading && " Intentando conectar..."}
+            </p>
+          </div>
+        </div>
+      )}
+      
+      {/* Loading indicator */}
+      {isLoading && (
+        <div className="bg-blue-100 border-b border-blue-200 px-4 py-2">
+          <div className="container mx-auto">
+            <p className="text-blue-800 text-sm text-center">
+              🔄 Cargando datos...
             </p>
           </div>
         </div>
