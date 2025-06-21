@@ -5,6 +5,7 @@ export interface User {
   phone?: string;
   address?: string;
   createdAt: Date;
+  updatedAt?: Date;
   orderCount: number;
   totalCookies: number;
   box4Count: number;
@@ -18,6 +19,8 @@ export interface CookieFlavor {
   id: string;
   name: string;
   available: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface Cookie {
@@ -30,14 +33,17 @@ export interface Cookie {
 
 export interface InventoryItem {
   id: string;
+  flavorId?: string;
   flavor: string;
   size: CookieSize;
   quantity: number;
   createdAt: Date;
+  updatedAt?: Date;
 }
 
 export interface InventoryMovement {
   id: string;
+  flavorId?: string;
   flavor: string;
   size: CookieSize;
   quantity: number;
@@ -50,6 +56,7 @@ export interface InventoryMovement {
 export interface SaleItem {
   id: string;
   cookieId: string;
+  flavorId?: string;
   flavor: string;
   size: CookieSize;
   quantity: number;
@@ -68,20 +75,36 @@ export interface Sale {
   date: Date;
 }
 
+export interface OrderItem {
+  id: string;
+  orderId: string;
+  saleItemId?: string;
+  flavorId?: string;
+  flavor: string;
+  size: CookieSize;
+  quantity: number;
+  price: number;
+  total: number;
+  saleType: SaleType;
+  boxQuantity?: number;
+  createdAt?: Date;
+}
+
 export interface Order {
   id: string;
   saleId: string;
   userId: string;
   userName: string;
-  items: SaleItem[];
+  items: OrderItem[];
   total: number;
   date: Date;
   isPrepared: boolean;
   preparedDate?: Date;
   isDelivered: boolean;
   deliveredDate?: Date;
-  isCancelled: boolean;
-  cancelledDate?: Date;
+  isPaid: boolean; // Cambié de isCancelled a isPaid
+  paidDate?: Date; // Cambié de cancelledDate a paidDate
+  updatedAt?: Date;
 }
 
 export interface FinancialRecord {
@@ -91,25 +114,5 @@ export interface FinancialRecord {
   description: string;
   amount: number;
   category: string;
+  orderId?: string; // Nueva relación con orders
 }
-
-export type AppContextType = {
-  users: User[];
-  setUsers: React.Dispatch<React.SetStateAction<User[]>>;
-  currentUser: User | null;
-  setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
-  flavors: CookieFlavor[];
-  setFlavors: React.Dispatch<React.SetStateAction<CookieFlavor[]>>;
-  inventory: InventoryItem[];
-  setInventory: React.Dispatch<React.SetStateAction<InventoryItem[]>>;
-  inventoryMovements: InventoryMovement[];
-  setInventoryMovements: React.Dispatch<React.SetStateAction<InventoryMovement[]>>;
-  currentSale: SaleItem[];
-  setCurrentSale: React.Dispatch<React.SetStateAction<SaleItem[]>>;
-  sales: Sale[];
-  setSales: React.Dispatch<React.SetStateAction<Sale[]>>;
-  orders: Order[];
-  setOrders: React.Dispatch<React.SetStateAction<Order[]>>;
-  financialRecords: FinancialRecord[];
-  setFinancialRecords: React.Dispatch<React.SetStateAction<FinancialRecord[]>>;
-};

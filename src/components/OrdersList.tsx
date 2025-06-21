@@ -4,7 +4,7 @@ import { Order, SaleItem } from '../types';
 import { Package2, Clock, CheckCircle, XCircle, Cookie, Truck, DollarSign } from 'lucide-react';
 
 const OrdersList: React.FC = () => {
-  const { orders, markOrderPrepared, markOrderDelivered, markOrderCancelled } = useAppContext();
+  const { orders, markOrderPrepared, markOrderDelivered, markOrderPaid } = useAppContext();
 
   const getSaleTypeLabel = (saleType: string, boxQuantity?: number) => {
     switch (saleType) {
@@ -26,8 +26,16 @@ const OrdersList: React.FC = () => {
     }, 0);
   };
 
+  // Dentro del mapeo de pedidos:
+const totalCookies = getTotalCookies(
+  orders.items.map((item) => ({
+    ...item,
+    cookieId: item.cookieId || 'default-cookie-id', // Asigna un valor válido para cookieId
+  }))
+);
+
   const getOrderStatus = (order: Order) => {
-    if (order.isCancelled) return 'cancelled';
+    if (order.isPaid) return 'paid';
     if (order.isDelivered) return 'delivered';
     if (order.isPrepared) return 'prepared';
     return 'pending';
@@ -39,7 +47,7 @@ const OrdersList: React.FC = () => {
         return 'bg-green-50 border-green-200 text-green-800';
       case 'prepared':
         return 'bg-blue-50 border-blue-200 text-blue-800';
-      case 'cancelled':
+      case 'paid':
         return 'bg-purple-50 border-purple-200 text-purple-800';
       default:
         return 'bg-amber-50 border-amber-200 text-amber-800';
@@ -52,7 +60,7 @@ const OrdersList: React.FC = () => {
         return 'Entregado';
       case 'prepared':
         return 'Preparado';
-      case 'cancelled':
+      case 'paid':
         return 'Pagado';
       default:
         return 'Pendiente';
@@ -106,9 +114,9 @@ const OrdersList: React.FC = () => {
                         Entregado: {new Date(order.deliveredDate).toLocaleDateString()} {new Date(order.deliveredDate).toLocaleTimeString()}
                       </p>
                     )}
-                    {order.cancelledDate && (
+                    {order.paidDate && (
                       <p className="text-sm opacity-75">
-                        Cancelado: {new Date(order.cancelledDate).toLocaleDateString()} {new Date(order.cancelledDate).toLocaleTimeString()}
+                        Cancelado: {new Date(order.paidDate).toLocaleDateString()} {new Date(order.paidDate).toLocaleTimeString()}
                       </p>
                     )}
                   </div>
@@ -195,17 +203,17 @@ const OrdersList: React.FC = () => {
                     </div>
                     
                     <div className={`flex items-center px-3 py-1 rounded-full text-xs ${
-                      // order.isCancelled ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-500'
-                      order.isCancelled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
+                      // order.isPaid ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-500'
+                      order.isPaid ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
 
                     }`}>
                       <DollarSign className="h-4 w-4 mr-1" />
-                      Pagado {order.isCancelled ? '✓' : ''}
+                      Pagado {order.isPaid ? '✓' : ''}
                     </div>
                   </div>
 
                   {/* Action Buttons */}
-                  {/* {!order.isCancelled && ( */}
+                  {/* {!order.isPaid && ( */}
                     <div className="flex flex-wrap gap-2">
                       {!order.isPrepared && (
                         <button
@@ -226,9 +234,9 @@ const OrdersList: React.FC = () => {
                           Marcar como Entregado
                         </button>
                       )}
-                      {!order.isCancelled && (
+                      {!order.isPaid && (
                         <button
-                          onClick={() => markOrderCancelled(order.id)}
+                          onClick={() => markOrderPaid(order.id)}
                           className="flex items-center px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm"
                         >
                           <XCircle className="h-4 w-4 mr-1" />

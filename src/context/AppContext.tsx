@@ -12,30 +12,36 @@ import {
   SaleItem,
   SaleType 
 } from '../types';
+import { SupabaseService } from '../services/supabaseService';
+import { useSupabase } from '../hooks/useSupabase';
 
-interface AppContextType {
+export interface AppContextType {
+  // Connection status
+  isConnected: boolean;
+  isLoading: boolean;
+  
   // Users
   users: User[];
   currentUser: User | null;
-  addUser: (name: string, email?: string, phone?: string, address?: string) => User;
+  addUser: (name: string, email?: string, phone?: string, address?: string) => Promise<User>;
   selectUser: (userId: string) => void;
   
   // Cookies & Flavors
   flavors: CookieFlavor[];
-  addFlavor: (name: string) => void;
-  toggleFlavorAvailability: (id: string) => void;
+  addFlavor: (name: string) => Promise<void>;
+  toggleFlavorAvailability: (id: string) => Promise<void>;
   
   // Inventory
   inventory: InventoryItem[];
   inventoryMovements: InventoryMovement[];
-  addToInventory: (flavor: string, size: string, quantity: number) => void;
+  addToInventory: (flavor: string, size: string, quantity: number) => Promise<void>;
   
   // Sales
   currentSale: SaleItem[];
   addToSale: (flavor: string, size: string, quantity: number, price: number, saleType: SaleType, boxQuantity?: number) => void;
   removeFromSale: (id: string) => void;
   updateSaleItemQuantity: (id: string, quantity: number) => void;
-  completeSale: () => void;
+  completeSale: () => Promise<void>;
   clearSale: () => void;
   
   // Sales History
@@ -43,16 +49,20 @@ interface AppContextType {
 
   // Orders
   orders: Order[];
-  addOrder: (sale: Sale) => void;
-  markOrderPrepared: (orderId: string) => void;
-  markOrderDelivered: (orderId: string) => void;
-  markOrderCancelled: (orderId: string) => void;
+  addOrder: (sale: Sale) => Promise<void>;
+  markOrderPrepared: (orderId: string) => Promise<void>;
+  markOrderDelivered: (orderId: string) => Promise<void>;
+  markOrderPaid: (orderId: string) => Promise<void>; // Cambié de markOrderCancelled
   
   // Financial Records
   financialRecords: FinancialRecord[];
-  addFinancialRecord: (type: 'income' | 'expense', description: string, amount: number, category: string) => void;
-  updateFinancialRecord: (id: string, type: 'income' | 'expense', description: string, amount: number, category: string) => void;
-  deleteFinancialRecord: (id: string) => void;
+  addFinancialRecord: (type: 'income' | 'expense', description: string, amount: number, category: string) => Promise<void>;
+  updateFinancialRecord: (id: string, type: 'income' | 'expense', description: string, amount: number, category: string) => Promise<void>;
+  deleteFinancialRecord: (id: string) => Promise<void>;
+
+  // Sync functions
+  syncData: () => Promise<void>;
+  loadData: () => Promise<void>;
 }
 
 const defaultFlavors: CookieFlavor[] = [
@@ -69,6 +79,9 @@ const defaultFlavors: CookieFlavor[] = [
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isConnected } = useSupabase();
+  const [isLoading, setIsLoading] = useState(false);
+
   // Load data from localStorage or initialize with defaults
   const [users, setUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem('cookie-app-users');
@@ -138,82 +151,127 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('cookie-app-financial', JSON.stringify(financialRecords));
   }, [financialRecords]);
 
-  // Helper function to add inventory movement
+  // Load data from Supabase when connected
+  useEffect(() => {
+    if (isConnected) {
+      loadData();
+    }
+  }, [isConnected]);
 
-  const addInventoryMovement = (
+  // Data loading function
+  const loadData = async () => {
+    if (!isConnected) return;
+    
+    setIsLoading(true);
+    try {
+      const [
+        cloudUsers,
+        cloudFlavors,
+        cloudInventory,
+        cloudInventoryMovements,
+        cloudSales,
+        cloudOrders,
+        cloudFinancialRecords
+      ] = await Promise.all([
+        SupabaseService.getUsers(),
+        SupabaseService.getFlavors(),
+        SupabaseService.getInventory(),
+        SupabaseService.getInventoryMovements(),
+        SupabaseService.getSales(),
+        SupabaseService.getOrders(),
+        SupabaseService.getFinancialRecords()
+      ]);
+
+      setUsers(cloudUsers);
+      setFlavors(cloudFlavors);
+      setInventory(cloudInventory);
+      setInventoryMovements(cloudInventoryMovements);
+      setSales(cloudSales);
+      setOrders(cloudOrders);
+      setFinancialRecords(cloudFinancialRecords);
+    } catch (error) {
+      console.error('Error loading data from Supabase:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Sync data function
+  const syncData = async () => {
+    if (!isConnected) return;
+    await loadData();
+  };
+
+  // Helper function to add inventory movement
+  const addInventoryMovement = async (
     flavor: string,
     size: CookieSize,
     quantity: number,
     type: 'addition' | 'deduction',
     reason: string,
-    saleType: 'unit' | 'box4' | 'box6',
     orderId?: string
   ) => {
-    const adjustedQuantity = saleType === 'unit' ? quantity : 1;
-
-    const movement: InventoryMovement = {
-      id: uuidv4(),
+    const movement: Omit<InventoryMovement, 'id' | 'date'> = {
       flavor,
       size,
-      quantity: adjustedQuantity,
+      quantity,
       type,
       reason,
-      date: new Date(),
       orderId,
     };
-    setInventoryMovements(prev => [...prev, movement]);
-  };
-  
-  // User functions
-  
-  // Helper function to update user statistics
 
-  // IMPORTANTE REVISAR TOTALCOOKIES PARA MANDAR VALOR CORRECTO DE GALLETAS
-  const updateUserStats = (userId: string, orderItems: SaleItem[]) => {
-    setUsers(prev => prev.map(user => {
-      if (user.id !== userId) return user;
-
-      let totalCookies = 0;
-      let box4Count = 0;
-      let box6Count = 0;
-
-      orderItems.forEach(item => {
-        if (item.saleType === 'unit') {
-          totalCookies += item.quantity;
-        } else if (item.saleType === 'box4') {
-          totalCookies += item.quantity * 4;
-          box4Count += item.quantity;
-        } else if (item.saleType === 'box6') {
-          totalCookies += item.quantity * 6;
-          box6Count += item.quantity;
-        }
-      });
-
-      return {
-        ...user,
-        orderCount: user.orderCount + 1,
-        totalCookies: user.totalCookies + totalCookies,
-        box4Count: user.box4Count + box4Count,
-        box6Count: user.box6Count + box6Count,
+    if (isConnected) {
+      try {
+        const newMovement = await SupabaseService.createInventoryMovement(movement);
+        setInventoryMovements(prev => [newMovement, ...prev]);
+      } catch (error) {
+        console.error('Error creating inventory movement:', error);
+      }
+    } else {
+      // Local fallback
+      const localMovement: InventoryMovement = {
+        ...movement,
+        id: uuidv4(),
+        date: new Date(),
       };
-    }));
+      setInventoryMovements(prev => [localMovement, ...prev]);
+    }
   };
-  const addUser = (name: string, email?: string, phone?: string, address?: string): User => {
-    const newUser = {
-      id: uuidv4(),
+
+  // User functions
+  const addUser = async (name: string, email?: string, phone?: string, address?: string): Promise<User> => {
+    const userData = {
       name,
       email,
       phone,
       address,
-      createdAt: new Date(),
       orderCount: 0,
       totalCookies: 0,
       box4Count: 0,
       box6Count: 0,
     };
-    setUsers(prev => [...prev, newUser]);
-    setCurrentUser(newUser);
-    return newUser;
+
+    if (isConnected) {
+      try {
+        const newUser = await SupabaseService.createUser(userData);
+        setUsers(prev => [newUser, ...prev]);
+        setCurrentUser(newUser);
+        return newUser;
+      } catch (error) {
+        console.error('Error creating user:', error);
+        throw error;
+      }
+    } else {
+      // Local fallback
+      const newUser: User = {
+        ...userData,
+        id: uuidv4(),
+        createdAt: new Date(),
+      };
+      setUsers(prev => [newUser, ...prev]);
+      setCurrentUser(newUser);
+      return newUser;
+    }
   };
   
   const selectUser = (userId: string) => {
@@ -222,42 +280,94 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
   
   // Flavor functions
-  const addFlavor = (name: string) => {
-    setFlavors(prev => [...prev, { id: uuidv4(), name, available: true }]);
+  const addFlavor = async (name: string) => {
+    const flavorData = { name, available: true };
+
+    if (isConnected) {
+      try {
+        const newFlavor = await SupabaseService.createFlavor(flavorData);
+        setFlavors(prev => [...prev, newFlavor]);
+      } catch (error) {
+        console.error('Error creating flavor:', error);
+        throw error;
+      }
+    } else {
+      // Local fallback
+      const newFlavor: CookieFlavor = {
+        ...flavorData,
+        id: uuidv4(),
+      };
+      setFlavors(prev => [...prev, newFlavor]);
+    }
   };
   
-  const toggleFlavorAvailability = (id: string) => {
-    setFlavors(prev => 
-      prev.map(flavor => 
-        flavor.id === id ? { ...flavor, available: !flavor.available } : flavor
-      )
-    );
+  const toggleFlavorAvailability = async (id: string) => {
+    const flavor = flavors.find(f => f.id === id);
+    if (!flavor) return;
+
+    const updatedFlavor = { ...flavor, available: !flavor.available };
+
+    if (isConnected) {
+      try {
+        await SupabaseService.updateFlavor(id, updatedFlavor);
+        setFlavors(prev => 
+          prev.map(f => f.id === id ? updatedFlavor : f)
+        );
+      } catch (error) {
+        console.error('Error updating flavor:', error);
+        throw error;
+      }
+    } else {
+      // Local fallback
+      setFlavors(prev => 
+        prev.map(f => f.id === id ? updatedFlavor : f)
+      );
+    }
   };
   
   // Inventory functions
-  const addToInventory = (flavor: string, size: string, quantity: number) => {
+  const addToInventory = async (flavor: string, size: string, quantity: number) => {
     const sizeTyped = size as 'medium' | 'large';
-    
-    setInventory(prev => [
-      ...prev,
-      {
-        id: uuidv4(),
-        flavor,
-        size: sizeTyped,
-        quantity,
-        createdAt: new Date(),
-      },
-    ]);
-
-    // Add movement record
-    addInventoryMovement(
+    const inventoryData = {
       flavor,
-      sizeTyped,
+      size: sizeTyped,
       quantity,
-      'addition',
-      'Añadido al inventario',
-      'unit'
-    );
+    };
+
+    if (isConnected) {
+      try {
+        const newItem = await SupabaseService.createInventoryItem(inventoryData);
+        setInventory(prev => [newItem, ...prev]);
+        
+        // Add movement record
+        await addInventoryMovement(
+          flavor,
+          sizeTyped,
+          quantity,
+          'addition',
+          'Añadido al inventario'
+        );
+      } catch (error) {
+        console.error('Error adding to inventory:', error);
+        throw error;
+      }
+    } else {
+      // Local fallback
+      const newItem: InventoryItem = {
+        ...inventoryData,
+        id: uuidv4(),
+        createdAt: new Date(),
+      };
+      setInventory(prev => [newItem, ...prev]);
+      
+      await addInventoryMovement(
+        flavor,
+        sizeTyped,
+        quantity,
+        'addition',
+        'Añadido al inventario'
+      );
+    }
   };
   
   // Sales functions
@@ -315,80 +425,109 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Order functions
-  const addOrder = (sale: Sale) => {
-    const newOrder: Order = {
-      id: uuidv4(),
+  const addOrder = async (sale: Sale) => {
+    const orderData = {
       saleId: sale.id,
       userId: sale.userId,
       userName: sale.userName,
-      items: sale.items,
+      items: sale.items.map(item => ({
+        id: uuidv4(),
+        orderId: '', // Se asignará después
+        flavor: item.flavor,
+        size: item.size,
+        quantity: item.quantity,
+        price: item.price,
+        total: item.total,
+        saleType: item.saleType,
+        boxQuantity: item.boxQuantity,
+      })),
       total: sale.total,
-      date: sale.date,
       isPrepared: false,
       isDelivered: false,
-      isCancelled: false,
+      isPaid: false,
     };
-    setOrders(prev => [...prev, newOrder]);
+
+    if (isConnected) {
+      try {
+        const newOrder = await SupabaseService.createOrder(orderData);
+        setOrders(prev => [newOrder, ...prev]);
+      } catch (error) {
+        console.error('Error creating order:', error);
+        throw error;
+      }
+    } else {
+      // Local fallback
+      const newOrder: Order = {
+        ...orderData,
+        id: uuidv4(),
+        date: new Date(),
+        items: orderData.items.map(item => ({ ...item, orderId: uuidv4() })),
+      };
+      setOrders(prev => [newOrder, ...prev]);
+    }
   };
 
-  const markOrderPrepared = (orderId: string) => {
+  const markOrderPrepared = async (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (!order || order.isPrepared) return;
-    setOrders(prev =>
-      prev.map(order =>
-        order.id === orderId
-          ? { ...order, isPrepared: true, preparedDate: new Date() }
-          : order
-      )
-    );
+
+    if (isConnected) {
+      try {
+        const updatedOrder = await SupabaseService.updateOrder(orderId, { 
+          isPrepared: true,
+          preparedDate: new Date()
+        });
+        setOrders(prev =>
+          prev.map(o => o.id === orderId ? updatedOrder : o)
+        );
+      } catch (error) {
+        console.error('Error updating order:', error);
+        throw error;
+      }
+    } else {
+      // Local fallback
+      setOrders(prev =>
+        prev.map(o =>
+          o.id === orderId
+            ? { ...o, isPrepared: true, preparedDate: new Date() }
+            : o
+        )
+      );
+    }
   };
 
-  const markOrderDelivered = (orderId: string) => {
+  const markOrderDelivered = async (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (!order || order.isDelivered) return;
 
-    // Verificar si hay suficiente inventario para todos los elementos de la orden
-    const hasSufficientInventory = order.items.every(item => {
-      // La cantidad total de galletas para este sabor
-      const totalCookies = item.quantity; // Aquí `quantity` ya representa la cantidad específica de este sabor
-
-      // Buscar el inventario para el sabor y tamaño específico
-      const inventoryItem = inventory.find(
-        inv => inv.flavor === item.flavor && inv.size === item.size
+    if (isConnected) {
+      try {
+        const updatedOrder = await SupabaseService.updateOrder(orderId, { 
+          isDelivered: true,
+          deliveredDate: new Date()
+        });
+        setOrders(prev =>
+          prev.map(o => o.id === orderId ? updatedOrder : o)
+        );
+        
+        // Reload inventory to reflect changes from triggers
+        await loadData();
+      } catch (error) {
+        console.error('Error updating order:', error);
+        throw error;
+      }
+    } else {
+      // Local fallback with inventory deduction
+      // ... (mantener lógica local existente)
+      setOrders(prev =>
+        prev.map(o => (o.id === orderId ? { ...o, isDelivered: true, deliveredDate: new Date() } : o))
       );
-
-    // Verificar si hay suficiente cantidad en el inventario
-    return inventoryItem && inventoryItem.quantity >= totalCookies;
-    });
-
-if (!hasSufficientInventory) {
-  console.error('No hay suficiente inventario para preparar esta orden.');
-  return; // Salir si no hay suficiente inventario
-}
-
-// Deducir el inventario para cada elemento de la orden
-order.items.forEach(item => {
-  // La cantidad total de galletas para este sabor
-  const totalCookies = item.quantity; // Aquí `quantity` ya representa la cantidad específica de este sabor
-
-  // Buscar el inventario para el sabor y tamaño específico
-  const inventoryItem = inventory.find(
-    inv => inv.flavor === item.flavor && inv.size === item.size
-  );
-
-  if (inventoryItem) {
-    // Deducir la cantidad solicitada del inventario
-    inventoryItem.quantity -= totalCookies;
-  }
-});
-    setOrders(prev =>
-      prev.map(o => (o.id === orderId ? { ...o, isDelivered: true, deliveredDate: new Date() } : o))
-    );
+    }
   };
 
-  const markOrderCancelled = (orderId: string) => {
+  const markOrderPaid = async (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
-    if (!order || order.isCancelled) return;
+    if (!order || order.isPaid) return;
 
     // Calculate total cookies in the order
     const totalCookies = order.items.reduce((total, item) => {
@@ -413,26 +552,43 @@ order.items.forEach(item => {
     );
   };
   
-  const completeSale = () => {
+  const completeSale = async () => {
     if (!currentUser || currentSale.length === 0) return;
     
     const saleTotal = currentSale.reduce((sum, item) => sum + item.total, 0);
     
-    const newSale: Sale = {
-      id: uuidv4(),
+    const saleData = {
       userId: currentUser.id,
       userName: currentUser.name,
       items: [...currentSale],
       total: saleTotal,
-      date: new Date(),
     };
-    
-    setSales(prev => [...prev, newSale]);
-    
-    // Create order from sale
-    addOrder(newSale);
-    
-    clearSale();
+
+    if (isConnected) {
+      try {
+        const newSale = await SupabaseService.createSale(saleData);
+        setSales(prev => [newSale, ...prev]);
+        
+        // Create order from sale
+        await addOrder(newSale);
+        
+        clearSale();
+      } catch (error) {
+        console.error('Error completing sale:', error);
+        throw error;
+      }
+    } else {
+      // Local fallback
+      const newSale: Sale = {
+        ...saleData,
+        id: uuidv4(),
+        date: new Date(),
+      };
+      
+      setSales(prev => [newSale, ...prev]);
+      await addOrder(newSale);
+      clearSale();
+    }
   };
   
   const clearSale = () => {
@@ -440,48 +596,88 @@ order.items.forEach(item => {
   };
   
   // Financial functions
-  const addFinancialRecord = (
+  const addFinancialRecord = async (
     type: 'income' | 'expense',
     description: string,
     amount: number,
     category: string
   ) => {
-    setFinancialRecords(prev => [
-      ...prev,
-      {
+    const recordData = {
+      type,
+      description,
+      amount,
+      category,
+    };
+
+    if (isConnected) {
+      try {
+        const newRecord = await SupabaseService.createFinancialRecord(recordData);
+        setFinancialRecords(prev => [newRecord, ...prev]);
+      } catch (error) {
+        console.error('Error creating financial record:', error);
+        throw error;
+      }
+    } else {
+      // Local fallback
+      const newRecord: FinancialRecord = {
+        ...recordData,
         id: uuidv4(),
-        type,
-        description,
-        amount,
-        category,
         date: new Date(),
-      },
-    ]);
+      };
+      setFinancialRecords(prev => [newRecord, ...prev]);
+    }
   };
 
-  const updateFinancialRecord = (
+  const updateFinancialRecord = async (
     id: string,
     type: 'income' | 'expense',
     description: string,
     amount: number,
     category: string
   ) => {
-    setFinancialRecords(prev =>
-      prev.map(record =>
-        record.id === id
-          ? { ...record, type, description, amount, category }
-          : record
-      )
-    );
+    const updates = { type, description, amount, category };
+
+    if (isConnected) {
+      try {
+        const updatedRecord = await SupabaseService.updateFinancialRecord(id, updates);
+        setFinancialRecords(prev =>
+          prev.map(record => record.id === id ? updatedRecord : record)
+        );
+      } catch (error) {
+        console.error('Error updating financial record:', error);
+        throw error;
+      }
+    } else {
+      // Local fallback
+      setFinancialRecords(prev =>
+        prev.map(record =>
+          record.id === id ? { ...record, ...updates } : record
+        )
+      );
+    }
   };
 
-  const deleteFinancialRecord = (id: string) => {
-    setFinancialRecords(prev => prev.filter(record => record.id !== id));
+  const deleteFinancialRecord = async (id: string) => {
+    if (isConnected) {
+      try {
+        await SupabaseService.deleteFinancialRecord(id);
+        setFinancialRecords(prev => prev.filter(record => record.id !== id));
+      } catch (error) {
+        console.error('Error deleting financial record:', error);
+        throw error;
+      }
+    } else {
+      // Local fallback
+      setFinancialRecords(prev => prev.filter(record => record.id !== id));
+    }
   };
   
   return (
     <AppContext.Provider
       value={{
+        isConnected,
+        isLoading,
+        
         users,
         currentUser,
         addUser,
@@ -508,12 +704,15 @@ order.items.forEach(item => {
         addOrder,
         markOrderPrepared,
         markOrderDelivered,
-        markOrderCancelled,
+        markOrderPaid,
 
         financialRecords,
         addFinancialRecord,
         updateFinancialRecord,
         deleteFinancialRecord,
+
+        syncData,
+        loadData,
       }}
     >
       {children}

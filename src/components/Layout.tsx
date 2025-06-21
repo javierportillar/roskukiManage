@@ -1,6 +1,9 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CookieIcon, BarChart3, Package, ShoppingCart, Menu, X, Users, ClipboardList, Download } from 'lucide-react';
+import SyncStatus from './SyncStatus';
+import SyncButton from './SyncButton';
+import { useAppContext } from '../context/AppContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -9,6 +12,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const location = useLocation();
+  const { isConnected, isLoading } = useAppContext();
 
   const navItems = [
     { path: '/ventas', label: 'Ventas', icon: <ShoppingCart className="w-5 h-5" /> },
@@ -17,7 +21,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/financial', label: 'Finanzas', icon: <BarChart3 className="w-5 h-5" /> },
     { path: '/customers', label: 'Clientes', icon: <Users className="w-5 h-5" /> },
     { path: '/backup', label: 'Exportar', icon: <Download className="w-5 h-5" /> },
-
   ];
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
@@ -31,6 +34,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <CookieIcon className="h-8 w-8" />
             <span>Controlador Roskuki</span>
           </Link>
+          
+          {/* Sync Status and Controls */}
+          <div className="hidden md:flex items-center space-x-4">
+            <SyncStatus />
+            {isConnected && <SyncButton />}
+            {isLoading && (
+              <div className="text-amber-100 text-sm">
+                Sincronizando...
+              </div>
+            )}
+          </div>
           
           {/* Mobile menu button */}
           <button 
@@ -63,23 +77,42 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Mobile menu */}
       {isMenuOpen && (
         <div className="md:hidden bg-amber-700 text-white">
-          <nav className="container mx-auto px-4 py-2 flex flex-col">
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setIsMenuOpen(false)}
-                className={`px-4 py-3 rounded-lg flex items-center space-x-2 transition-all ${
-                  location.pathname === item.path
-                    ? 'bg-amber-800 font-medium'
-                    : 'hover:bg-amber-800/50'
-                }`}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </Link>
-            ))}
-          </nav>
+          <div className="container mx-auto px-4 py-2">
+            {/* Mobile sync controls */}
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-amber-600">
+              <SyncStatus />
+              {isConnected && <SyncButton />}
+            </div>
+            
+            <nav className="flex flex-col">
+              {navItems.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setIsMenuOpen(false)}
+                  className={`px-4 py-3 rounded-lg flex items-center space-x-2 transition-all ${
+                    location.pathname === item.path
+                      ? 'bg-amber-800 font-medium'
+                      : 'hover:bg-amber-800/50'
+                  }`}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </Link>
+              ))}
+            </nav>
+          </div>
+        </div>
+      )}
+      
+      {/* Connection status banner */}
+      {!isConnected && (
+        <div className="bg-yellow-100 border-b border-yellow-200 px-4 py-2">
+          <div className="container mx-auto">
+            <p className="text-yellow-800 text-sm text-center">
+              ⚠️ Trabajando en modo local. Los datos no se sincronizan entre dispositivos.
+            </p>
+          </div>
         </div>
       )}
       
