@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAppContext } from '../context/AppContext';
 import { Order, SaleItem, OrderItem } from '../types';
-import { Package2, Clock, CheckCircle, XCircle, Cookie, Truck, DollarSign } from 'lucide-react';
+import { Package2, Clock, CheckCircle, Cookie, Truck, DollarSign } from 'lucide-react';
 
 const OrdersList: React.FC = () => {
   const { orders, markOrderPrepared, markOrderDelivered, markOrderPaid } = useAppContext();
@@ -19,11 +19,27 @@ const OrdersList: React.FC = () => {
 
   const getTotalCookies = (items: (SaleItem | OrderItem)[]) => {
     return items.reduce((total, item) => {
-      const cookieCount = item.saleType === 'unit' 
-        ? item.quantity 
+      const cookieCount = item.saleType === 'unit'
+        ? item.quantity
         : item.quantity;
       return total + cookieCount;
     }, 0);
+  };
+
+  const getOrderSummary = (items: OrderItem[]) => {
+    let box4Cookies = 0;
+    let box6Cookies = 0;
+    let units = 0;
+    items.forEach(item => {
+      if (item.saleType === 'box4') box4Cookies += item.quantity;
+      else if (item.saleType === 'box6') box6Cookies += item.quantity;
+      else units += item.quantity;
+    });
+    return {
+      box4: box4Cookies / 4,
+      box6: box6Cookies / 6,
+      unit: units
+    };
   };
 
   const getOrderStatus = (order: Order) => {
@@ -87,7 +103,8 @@ const OrdersList: React.FC = () => {
           {sortedOrders.map((order) => {
             const status = getOrderStatus(order);
             const totalCookies = getTotalCookies(order.items);
-            
+            const summary = getOrderSummary(order.items);
+
             return (
               <div key={order.id} className={`border rounded-lg p-4 ${getStatusColor(status)}`}>
                 <div className="flex justify-between items-start mb-3">
@@ -120,6 +137,13 @@ const OrdersList: React.FC = () => {
                     <p className="text-sm opacity-75 flex items-center">
                       <Cookie className="h-4 w-4 mr-1" />
                       {totalCookies} galletas
+                    </p>
+                    <p className="text-xs opacity-75 mt-1">
+                      {summary.box4 > 0 && `${summary.box4} caja(s) x4`}
+                      {summary.box4 > 0 && (summary.box6 > 0 || summary.unit > 0) && ' - '}
+                      {summary.box6 > 0 && `${summary.box6} caja(s) x6`}
+                      {summary.box6 > 0 && summary.unit > 0 && ' - '}
+                      {summary.unit > 0 && `${summary.unit} individual(es)`}
                     </p>
                   </div>
                 </div>

@@ -24,6 +24,7 @@ export interface AppContextType {
   users: User[];
   currentUser: User | null;
   addUser: (name: string, email?: string, phone?: string, address?: string) => Promise<User>;
+  updateUser: (id: string, updates: Partial<User>) => Promise<void>;
   selectUser: (userId: string) => void;
   setUsers: (users: User[]) => void;
   
@@ -336,6 +337,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return newUser;
     }
   };
+
+  const updateUser = async (id: string, updates: Partial<User>): Promise<void> => {
+    if (isConnected) {
+      try {
+        console.log('Actualizando usuario en Supabase:', { id, updates });
+        const updatedUser = await SupabaseService.updateUser(id, updates);
+        console.log('Usuario actualizado:', updatedUser);
+        
+        // Update local state
+        setUsers(users.map(user => user.id === id ? updatedUser : user));
+        
+        // Update current user if it's the one being edited
+        if (currentUser && currentUser.id === id) {
+          setCurrentUser(updatedUser);
+        }
+      } catch (error) {
+        console.error('Error updating user:', error);
+        // Fallback to local update
+        const updatedUsers = users.map(user => 
+          user.id === id ? { ...user, ...updates, updatedAt: new Date() } : user
+        );
+        setUsers(updatedUsers);
+        
+        if (currentUser && currentUser.id === id) {
+          setCurrentUser({ ...currentUser, ...updates, updatedAt: new Date() });
+        }
+        throw error; // Re-throw to show error to user
+      }
+    } else {
+      // Local fallback
+      const updatedUsers = users.map(user => 
+        user.id === id ? { ...user, ...updates, updatedAt: new Date() } : user
+      );
+      setUsers(updatedUsers);
+      
+      if (currentUser && currentUser.id === id) {
+        setCurrentUser({ ...currentUser, ...updates, updatedAt: new Date() });
+      }
+    }
+  };
   
   const selectUser = (userId: string) => {
     const user = users.find(u => u.id === userId) || null;
@@ -509,6 +550,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Order functions
   const addOrder = async (sale: Sale) => {
+    // // Avoid creating duplicate orders for the same sale
+    // if (orders.some(o => o.saleId === sale.id)) {
+    //   return;
+    // }
     const orderData = {
       saleId: sale.id,
       userId: sale.userId,
@@ -802,6 +847,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         users,
         currentUser,
         addUser,
+        updateUser,
         selectUser,
         setUsers,
         
