@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAppContext } from '../context/AppContext';
-import { Order, SaleItem } from '../types';
+import { Order, SaleItem, OrderItem } from '../types';
 import { Package2, Clock, CheckCircle, XCircle, Cookie, Truck, DollarSign } from 'lucide-react';
 
 const OrdersList: React.FC = () => {
@@ -17,7 +17,7 @@ const OrdersList: React.FC = () => {
     }
   };
 
-  const getTotalCookies = (items: SaleItem[]) => {
+  const getTotalCookies = (items: (SaleItem | OrderItem)[]) => {
     return items.reduce((total, item) => {
       const cookieCount = item.saleType === 'unit' 
         ? item.quantity 
@@ -25,14 +25,6 @@ const OrdersList: React.FC = () => {
       return total + cookieCount;
     }, 0);
   };
-
-  // Dentro del mapeo de pedidos:
-const totalCookies = getTotalCookies(
-  orders.items.map((item) => ({
-    ...item,
-    cookieId: item.cookieId || 'default-cookie-id', // Asigna un valor válido para cookieId
-  }))
-);
 
   const getOrderStatus = (order: Order) => {
     if (order.isPaid) return 'paid';
@@ -44,9 +36,9 @@ const totalCookies = getTotalCookies(
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'delivered':
-        return 'bg-green-50 border-green-200 text-green-800';
-      case 'prepared':
         return 'bg-blue-50 border-blue-200 text-blue-800';
+      case 'prepared':
+        return 'bg-green-50 border-green-200 text-green-800';
       case 'paid':
         return 'bg-purple-50 border-purple-200 text-purple-800';
       default:
@@ -116,7 +108,7 @@ const totalCookies = getTotalCookies(
                     )}
                     {order.paidDate && (
                       <p className="text-sm opacity-75">
-                        Cancelado: {new Date(order.paidDate).toLocaleDateString()} {new Date(order.paidDate).toLocaleTimeString()}
+                        Pagado: {new Date(order.paidDate).toLocaleDateString()} {new Date(order.paidDate).toLocaleTimeString()}
                       </p>
                     )}
                   </div>
@@ -203,9 +195,7 @@ const totalCookies = getTotalCookies(
                     </div>
                     
                     <div className={`flex items-center px-3 py-1 rounded-full text-xs ${
-                      // order.isPaid ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-500'
                       order.isPaid ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
-
                     }`}>
                       <DollarSign className="h-4 w-4 mr-1" />
                       Pagado {order.isPaid ? '✓' : ''}
@@ -213,38 +203,37 @@ const totalCookies = getTotalCookies(
                   </div>
 
                   {/* Action Buttons */}
-                  {/* {!order.isPaid && ( */}
-                    <div className="flex flex-wrap gap-2">
-                      {!order.isPrepared && (
-                        <button
-                          onClick={() => markOrderPrepared(order.id)}
-                          className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
-                        >
-                          <Clock className="h-4 w-4 mr-1" />
-                          Marcar como Preparado
-                        </button>
-                      )}
-                      
-                      {!order.isDelivered && (
-                        <button
-                          onClick={() => markOrderDelivered(order.id)}
-                          className="flex items-center px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
-                        >
-                          <Truck className="h-4 w-4 mr-1" />
-                          Marcar como Entregado
-                        </button>
-                      )}
-                      {!order.isPaid && (
-                        <button
-                          onClick={() => markOrderPaid(order.id)}
-                          className="flex items-center px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm"
-                        >
-                          <XCircle className="h-4 w-4 mr-1" />
-                          Marcar como Pagado
-                        </button>
-                      )}
-                    </div>
-                  
+                  <div className="flex flex-wrap gap-2">
+                    {!order.isPrepared && (
+                      <button
+                        onClick={() => markOrderPrepared(order.id)}
+                        className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        <Clock className="h-4 w-4 mr-1" />
+                        Marcar como Preparado
+                      </button>
+                    )}
+                    
+                    {!order.isDelivered && (
+                      <button
+                        onClick={() => markOrderDelivered(order.id)}
+                        className="flex items-center px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
+                      >
+                        <Truck className="h-4 w-4 mr-1" />
+                        Marcar como Entregado
+                      </button>
+                    )}
+                    
+                    {!order.isPaid && (
+                      <button
+                        onClick={() => markOrderPaid(order.id)}
+                        className="flex items-center px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm"
+                      >
+                        <DollarSign className="h-4 w-4 mr-1" />
+                        Marcar como Pagado
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );

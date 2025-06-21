@@ -113,8 +113,8 @@ const BackupManager: React.FC = () => {
           'Fecha Preparado': order.preparedDate ? new Date(order.preparedDate).toLocaleDateString() : '',
           'Entregado': order.isDelivered ? 'Sí' : 'No',
           'Fecha Entregado': order.deliveredDate ? new Date(order.deliveredDate).toLocaleDateString() : '',
-          'Pagado': order.isCancelled ? 'Sí' : 'No',
-          'Fecha Pagado': order.cancelledDate ? new Date(order.cancelledDate).toLocaleDateString() : ''
+          'Pagado': order.isPaid ? 'Sí' : 'No',
+          'Fecha Pagado': order.paidDate ? new Date(order.paidDate).toLocaleDateString() : ''
         }))
       );
       const ordersSheet = XLSX.utils.json_to_sheet(ordersData);
