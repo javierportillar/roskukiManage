@@ -130,6 +130,10 @@ CREATE TABLE IF NOT EXISTS order_items (
   created_at timestamptz DEFAULT now()
 );
 
+-- Evitar duplicados de items por venta
+CREATE UNIQUE INDEX IF NOT EXISTS order_items_unique_order_sale_item
+  ON order_items(order_id, sale_item_id);
+
 -- Tabla de registros financieros
 CREATE TABLE IF NOT EXISTS financial_records (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -209,6 +213,8 @@ BEGIN
         si.box_quantity
     FROM sale_items si
     WHERE si.sale_id = NEW.sale_id;
+    ON CONFLICT (order_id, sale_item_id) DO NOTHING;
+
     
     RETURN NEW;
 END;

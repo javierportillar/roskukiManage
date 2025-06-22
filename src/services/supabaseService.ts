@@ -116,6 +116,20 @@ export class SupabaseService {
 
     if (flavorError) throw flavorError;
 
+    // Verificar si ya existe un registro para el mismo sabor y tamaño
+    const { data: existing } = await supabase
+      .from('inventory')
+      .select('*')
+      .eq('flavor_id', flavorData.id)
+      .eq('size', item.size)
+      .maybeSingle();
+
+    if (existing) {
+      const newQuantity = (existing.quantity as number) + item.quantity;
+      return this.updateInventoryItem(existing.id as string, newQuantity);
+    }
+
+
     const { data, error } = await supabase
       .from('inventory')
       .insert([{
