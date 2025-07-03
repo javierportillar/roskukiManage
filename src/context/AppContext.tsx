@@ -197,6 +197,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [isConnected, supabaseLoading]);
 
+  // Update flavor availability based on inventory
+  useEffect(() => {
+    updateFlavorAvailability();
+  }, [inventory]);
+
+  const updateFlavorAvailability = () => {
+    const updatedFlavors = flavors.map(flavor => {
+      const totalInventory = inventory
+        .filter(item => item.flavor === flavor.name)
+        .reduce((sum, item) => sum + item.quantity, 0);
+      
+      return {
+        ...flavor,
+        available: totalInventory > 0
+      };
+    });
+    
+    // Only update if there are actual changes
+    const hasChanges = updatedFlavors.some((flavor, index) => 
+      flavor.available !== flavors[index].available
+    );
+    
+    if (hasChanges) {
+      setFlavors(updatedFlavors);
+    }
+  };
+
   // Data loading function
   const loadData = async () => {
     if (!isConnected) {
@@ -290,6 +317,95 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setInventoryMovements(prev => [localMovement, ...prev]);
     }
+  };
+
+  // Helper function to deduct inventory locally
+  const deductInventoryLocal = async (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) {
+      console.error('❌ Pedido no encontrado:', orderId);
+      return;
+    }
+
+    console.log('🔄 Iniciando deducción de inventario para pedido:', order.userName);
+    
+    let updatedInventory = [...inventory];
+
+    // Process each item in the order
+    for (const item of order.items) {
+      const quantityToDeduct = item.quantity;
+      
+      console.log(`📦 Procesando: ${quantityToDeduct}x ${item.flavor} (${item.size})`);
+
+      // Find inventory items that match this flavor and size
+      const matchingItems = updatedInventory.filter(
+        inv => inv.flavor === item.flavor && inv.size === item.size && inv.quantity > 0
+      );
+
+      if (matchingItems.length === 0) {
+        console.warn(`⚠️ No hay inventario disponible para ${item.flavor} ${item.size}`);
+        continue;
+      }
+
+      // Calculate total available quantity
+      const totalAvailable = matchingItems.reduce((sum, inv) => sum + inv.quantity, 0);
+      
+      if (totalAvailable < quantityToDeduct) {
+        console.warn(`⚠️ Inventario insuficiente para ${item.flavor} ${item.size}. Disponible: ${totalAvailable}, Necesario: ${quantityToDeduct}`);
+      }
+
+      let remainingToDeduct = quantityToDeduct;
+
+      // Sort by creation date (FIFO - First In, First Out)
+      const sortedItems = matchingItems.sort((a, b) => 
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+
+      // Deduct from inventory items
+      for (const invItem of sortedItems) {
+        if (remainingToDeduct <= 0) break;
+
+        const invIndex = updatedInventory.findIndex(inv => inv.id === invItem.id);
+        if (invIndex === -1) continue;
+
+        const currentQuantity = updatedInventory[invIndex].quantity;
+        const deductFromThis = Math.min(remainingToDeduct, currentQuantity);
+
+        if (deductFromThis > 0) {
+          const newQuantity = currentQuantity - deductFromThis;
+          
+          console.log(`✅ Deduciendo ${deductFromThis} de lote ${invItem.id.substring(0, 8)}... (${currentQuantity} → ${newQuantity})`);
+
+          updatedInventory[invIndex] = {
+            ...updatedInventory[invIndex],
+            quantity: newQuantity,
+            updatedAt: new Date()
+          };
+
+          remainingToDeduct -= deductFromThis;
+        }
+      }
+
+      // Remove inventory items with 0 quantity
+      updatedInventory = updatedInventory.filter(inv => inv.quantity > 0);
+
+      // Add movement record
+      console.log(`📝 Registrando movimiento: -${quantityToDeduct} ${item.flavor} ${item.size}`);
+      await addInventoryMovement(
+        item.flavor,
+        item.size,
+        quantityToDeduct,
+        'deduction',
+        `Entrega de pedido - ${order.userName}`,
+        orderId
+      );
+    }
+
+    // Update inventory state
+    console.log('💾 Actualizando inventario...');
+    setInventory(updatedInventory);
+    
+    console.log('✅ Deducción de inventario completada');
   };
 
   // User functions
@@ -428,7 +544,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setFlavors(flavors.map(f => f.id === id ? updatedFlavor : f));
       }
     } else {
-      // Local fallback
+      // Fallback to local update
       setFlavors(flavors.map(f => f.id === id ? updatedFlavor : f));
     }
   };
@@ -550,10 +666,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Order functions
   const addOrder = async (sale: Sale) => {
-    // // Avoid creating duplicate orders for the same sale
-    // if (orders.some(o => o.saleId === sale.id)) {
-    //   return;
-    // }
     const orderData = {
       saleId: sale.id,
       userId: sale.userId,
@@ -638,26 +750,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const order = orders.find(o => o.id === orderId);
     if (!order || order.isDelivered) return;
 
+    console.log('🚚 Marcando pedido como entregado:', orderId);
+
     if (isConnected) {
       try {
+        console.log('☁️ Actualizando en Supabase...');
         const updatedOrder = await SupabaseService.updateOrder(orderId, { 
           isDelivered: true,
           deliveredDate: new Date()
         });
         setOrders(orders.map(o => o.id === orderId ? updatedOrder : o));
         
-        // Reload inventory to reflect changes from triggers
+        // Reload all data to get updated inventory and movements from triggers
+        console.log('🔄 Recargando datos desde Supabase...');
         await loadData();
+        console.log('✅ Datos recargados exitosamente');
       } catch (error) {
-        console.error('Error updating order:', error);
-        // Fallback to local update
+        console.error('❌ Error updating order in Supabase:', error);
+        // Fallback to local update with manual inventory deduction
+        console.log('⚠️ Error en Supabase, usando modo local');
         setOrders(orders.map(o => (o.id === orderId ? { ...o, isDelivered: true, deliveredDate: new Date() } : o)));
+        
+        // Manually deduct inventory in local mode
+        await deductInventoryLocal(orderId);
       }
     } else {
       // Local fallback with inventory deduction
+      console.log('💻 Modo local: actualizando pedido y deduciendo inventario');
       setOrders(orders.map(o =>
         o.id === orderId ? { ...o, isDelivered: true, deliveredDate: new Date() } : o
       ));
+      
+      // Manually deduct inventory in local mode
+      await deductInventoryLocal(orderId);
     }
   };
 

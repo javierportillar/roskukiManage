@@ -67,14 +67,14 @@ const SyncButton: React.FC = () => {
 
   return (
     <div className="flex space-x-2">
-      <button
+      {/* <button
         onClick={syncToCloud}
         disabled={isLoading}
         className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm"
       >
         <Upload className="h-4 w-4 mr-1" />
         Subir
-      </button>
+      </button> */}
       
       <button
         onClick={syncFromCloud}

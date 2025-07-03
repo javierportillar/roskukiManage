@@ -1,9 +1,10 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { CookieIcon, BarChart3, Package, ShoppingCart, Menu, X, Users, ClipboardList, Download } from 'lucide-react';
+import { CookieIcon, BarChart3, Package, ShoppingCart, Menu, X, Users, ClipboardList, Download, LogOut } from 'lucide-react';
 import SyncStatus from './SyncStatus';
 import SyncButton from './SyncButton';
 import { useAppContext } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -13,6 +14,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const location = useLocation();
   const { isConnected, isLoading } = useAppContext();
+  const { logout, user } = useAuth();
 
   const navItems = [
     { path: '/ventas', label: 'Ventas', icon: <ShoppingCart className="w-5 h-5" /> },
@@ -25,6 +27,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
+  const handleLogout = () => {
+    if (window.confirm('¿Estás seguro de que quieres cerrar sesión?')) {
+      logout();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-amber-50 flex flex-col">
       {/* Header */}
@@ -35,8 +43,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <span>Controlador Roskuki</span>
           </Link>
           
-          {/* Sync Status and Controls */}
+          {/* User info and controls */}
           <div className="hidden md:flex items-center space-x-4">
+            {/* User info */}
+            <div className="flex items-center space-x-2 bg-amber-800/30 rounded-lg px-3 py-1">
+              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+              <span className="text-sm font-medium">{user?.username}</span>
+            </div>
+            
             <SyncStatus />
             {isConnected && <SyncButton />}
             {isLoading && (
@@ -44,6 +58,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 Sincronizando...
               </div>
             )}
+            
+            {/* Logout button */}
+            <button
+              onClick={handleLogout}
+              className="flex items-center px-3 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors text-sm"
+              title="Cerrar sesión"
+            >
+              <LogOut className="h-4 w-4 mr-1" />
+              Salir
+            </button>
           </div>
           
           {/* Mobile menu button */}
@@ -78,10 +102,23 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {isMenuOpen && (
         <div className="md:hidden bg-amber-700 text-white">
           <div className="container mx-auto px-4 py-2">
-            {/* Mobile sync controls */}
+            {/* Mobile user info and sync controls */}
             <div className="flex items-center justify-between mb-4 pb-2 border-b border-amber-600">
-              <SyncStatus />
-              {isConnected && <SyncButton />}
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                <span className="text-sm font-medium">{user?.username}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <SyncStatus />
+                {isConnected && <SyncButton />}
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-xs"
+                >
+                  <LogOut className="h-3 w-3 mr-1" />
+                  Salir
+                </button>
+              </div>
             </div>
             
             <nav className="flex flex-col">
