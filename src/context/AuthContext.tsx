@@ -83,8 +83,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Obtener credenciales de las variables de entorno
-      const validUsername = import.meta.env.VITE_ADMIN_USERNAME || 'admin';
-      const validPassword = import.meta.env.VITE_ADMIN_PASSWORD || 'roskuki2025';
+      const validUsername = import.meta.env.VITE_ADMIN_USERNAME;
+      const validPassword = import.meta.env.VITE_ADMIN_PASSWORD;
       
       console.log('🔐 Verificando credenciales...');
       
