@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { Order, SaleItem, OrderItem } from '../types';
-import { Package2, Clock, CheckCircle, Cookie, Truck, DollarSign } from 'lucide-react';
+import { Package2, Clock, CheckCircle, Cookie, Truck, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const OrdersList: React.FC = () => {
   const { orders, markOrderPrepared, markOrderDelivered, markOrderPaid } = useAppContext();
+  const [currentPage, setCurrentPage] = useState(0);
+  const itemsPerPage = 10;
 
   const getSaleTypeLabel = (saleType: string, boxQuantity?: number) => {
     switch (saleType) {
@@ -86,11 +88,41 @@ const OrdersList: React.FC = () => {
     return new Date(b.date).getTime() - new Date(a.date).getTime();
   });
 
+  // Pagination logic
+  const totalPages = Math.ceil(sortedOrders.length / itemsPerPage);
+  const startIndex = currentPage * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentOrders = sortedOrders.slice(startIndex, endIndex);
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages - 1) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const goToPreviousPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-md p-5">
-      <h2 className="text-xl font-semibold text-amber-800 mb-4 flex items-center">
-        <Package2 className="mr-2 h-5 w-5" /> Lista de Pedidos
-      </h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold text-amber-800 flex items-center">
+          <Package2 className="mr-2 h-5 w-5" /> Lista de Pedidos
+        </h2>
+        
+        {orders.length > 0 && (
+          <div className="text-sm text-gray-600">
+            Mostrando {startIndex + 1}-{Math.min(endIndex, sortedOrders.length)} de {sortedOrders.length} pedidos
+          </div>
+        )}
+      </div>
 
       {orders.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
@@ -99,170 +131,226 @@ const OrdersList: React.FC = () => {
           <p className="text-sm">Los pedidos aparecerán aquí cuando se completen ventas</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {sortedOrders.map((order) => {
-            const status = getOrderStatus(order);
-            const totalCookies = getTotalCookies(order.items);
-            const summary = getOrderSummary(order.items);
+        <>
+          <div className="space-y-4 mb-6">
+            {currentOrders.map((order) => {
+              const status = getOrderStatus(order);
+              const totalCookies = getTotalCookies(order.items);
+              const summary = getOrderSummary(order.items);
 
-            return (
-              <div key={order.id} className={`border rounded-lg p-4 ${getStatusColor(status)}`}>
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="font-semibold text-lg">{order.userName}</h3>
-                    <p className="text-sm opacity-75">
-                      Pedido: {new Date(order.date).toLocaleDateString()} {new Date(order.date).toLocaleTimeString()}
-                    </p>
-                    {order.preparedDate && (
+              return (
+                <div key={order.id} className={`border rounded-lg p-4 ${getStatusColor(status)}`}>
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="font-semibold text-lg">{order.userName}</h3>
                       <p className="text-sm opacity-75">
-                        Preparado: {new Date(order.preparedDate).toLocaleDateString()} {new Date(order.preparedDate).toLocaleTimeString()}
+                        Pedido: {new Date(order.date).toLocaleDateString()} {new Date(order.date).toLocaleTimeString()}
                       </p>
-                    )}
-                    {order.deliveredDate && (
-                      <p className="text-sm opacity-75">
-                        Entregado: {new Date(order.deliveredDate).toLocaleDateString()} {new Date(order.deliveredDate).toLocaleTimeString()}
+                      {order.preparedDate && (
+                        <p className="text-sm opacity-75">
+                          Preparado: {new Date(order.preparedDate).toLocaleDateString()} {new Date(order.preparedDate).toLocaleTimeString()}
+                        </p>
+                      )}
+                      {order.deliveredDate && (
+                        <p className="text-sm opacity-75">
+                          Entregado: {new Date(order.deliveredDate).toLocaleDateString()} {new Date(order.deliveredDate).toLocaleTimeString()}
+                        </p>
+                      )}
+                      {order.paidDate && (
+                        <p className="text-sm opacity-75">
+                          Pagado: {new Date(order.paidDate).toLocaleDateString()} {new Date(order.paidDate).toLocaleTimeString()}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
+                        {getStatusLabel(status)}
+                      </span>
+                      <p className="text-lg font-bold mt-1">${order.total.toFixed(2)}</p>
+                      <p className="text-sm opacity-75 flex items-center">
+                        <Cookie className="h-4 w-4 mr-1" />
+                        {totalCookies} galletas
                       </p>
-                    )}
-                    {order.paidDate && (
-                      <p className="text-sm opacity-75">
-                        Pagado: {new Date(order.paidDate).toLocaleDateString()} {new Date(order.paidDate).toLocaleTimeString()}
+                      <p className="text-xs opacity-75 mt-1">
+                        {summary.box4 > 0 && `${summary.box4} caja(s) x4`}
+                        {summary.box4 > 0 && (summary.box6 > 0 || summary.unit > 0) && ' - '}
+                        {summary.box6 > 0 && `${summary.box6} caja(s) x6`}
+                        {summary.box6 > 0 && summary.unit > 0 && ' - '}
+                        {summary.unit > 0 && `${summary.unit} individual(es)`}
                       </p>
-                    )}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
-                      {getStatusLabel(status)}
-                    </span>
-                    <p className="text-lg font-bold mt-1">${order.total.toFixed(2)}</p>
-                    <p className="text-sm opacity-75 flex items-center">
-                      <Cookie className="h-4 w-4 mr-1" />
-                      {totalCookies} galletas
-                    </p>
-                    <p className="text-xs opacity-75 mt-1">
-                      {summary.box4 > 0 && `${summary.box4} caja(s) x4`}
-                      {summary.box4 > 0 && (summary.box6 > 0 || summary.unit > 0) && ' - '}
-                      {summary.box6 > 0 && `${summary.box6} caja(s) x6`}
-                      {summary.box6 > 0 && summary.unit > 0 && ' - '}
-                      {summary.unit > 0 && `${summary.unit} individual(es)`}
-                    </p>
-                  </div>
-                </div>
 
-                {/* Order Items */}
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium mb-2">Detalles del pedido:</h4>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Galleta
-                          </th>
-                          <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Tamaño
-                          </th>
-                          <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Tipo
-                          </th>
-                          <th scope="col" className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Cant.
-                          </th>
-                          <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Total
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {order.items.map((item) => (
-                          <tr key={item.id}>
-                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                              {item.flavor}
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                              {item.size === 'medium' ? 'Mediana' : 'Grande'}
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                              <span className="flex items-center">
-                                {item.saleType !== 'unit' && <Package2 className="h-4 w-4 mr-1" />}
-                                {getSaleTypeLabel(item.saleType, item.boxQuantity)}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 text-center">
-                              {item.quantity}
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
-                              ${item.total.toFixed(2)}
-                            </td>
+                  {/* Order Items */}
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium mb-2">Detalles del pedido:</h4>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Galleta
+                            </th>
+                            <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Tamaño
+                            </th>
+                            <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Tipo
+                            </th>
+                            <th scope="col" className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Cant.
+                            </th>
+                            <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Total
+                            </th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Status Indicators and Action Buttons */}
-                <div className="space-y-3">
-                  {/* Status Indicators */}
-                  <div className="flex flex-wrap gap-2">
-                    <div className={`flex items-center px-3 py-1 rounded-full text-xs ${
-                      order.isPrepared ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
-                    }`}>
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Preparado {order.isPrepared ? '✓' : ''}
-                    </div>
-                    
-                    <div className={`flex items-center px-3 py-1 rounded-full text-xs ${
-                      order.isDelivered ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
-                    }`}>
-                      <Truck className="h-4 w-4 mr-1" />
-                      Entregado {order.isDelivered ? '✓' : ''}
-                    </div>
-                    
-                    <div className={`flex items-center px-3 py-1 rounded-full text-xs ${
-                      order.isPaid ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
-                    }`}>
-                      <DollarSign className="h-4 w-4 mr-1" />
-                      Pagado {order.isPaid ? '✓' : ''}
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {order.items.map((item) => (
+                            <tr key={item.id}>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                                {item.flavor}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                {item.size === 'medium' ? 'Mediana' : 'Grande'}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                <span className="flex items-center">
+                                  {item.saleType !== 'unit' && <Package2 className="h-4 w-4 mr-1" />}
+                                  {getSaleTypeLabel(item.saleType, item.boxQuantity)}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 text-center">
+                                {item.quantity}
+                              </td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
+                                ${item.total.toFixed(2)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex flex-wrap gap-2">
-                    {!order.isPrepared && (
-                      <button
-                        onClick={() => markOrderPrepared(order.id)}
-                        className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
-                      >
-                        <Clock className="h-4 w-4 mr-1" />
-                        Marcar como Preparado
-                      </button>
-                    )}
-                    
-                    {!order.isDelivered && (
-                      <button
-                        onClick={() => markOrderDelivered(order.id)}
-                        className="flex items-center px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
-                      >
+                  {/* Status Indicators and Action Buttons */}
+                  <div className="space-y-3">
+                    {/* Status Indicators */}
+                    <div className="flex flex-wrap gap-2">
+                      <div className={`flex items-center px-3 py-1 rounded-full text-xs ${
+                        order.isPrepared ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Preparado {order.isPrepared ? '✓' : ''}
+                      </div>
+                      
+                      <div className={`flex items-center px-3 py-1 rounded-full text-xs ${
+                        order.isDelivered ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
+                      }`}>
                         <Truck className="h-4 w-4 mr-1" />
-                        Marcar como Entregado
-                      </button>
-                    )}
-                    
-                    {!order.isPaid && (
-                      <button
-                        onClick={() => markOrderPaid(order.id)}
-                        className="flex items-center px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm"
-                      >
+                        Entregado {order.isDelivered ? '✓' : ''}
+                      </div>
+                      
+                      <div className={`flex items-center px-3 py-1 rounded-full text-xs ${
+                        order.isPaid ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'
+                      }`}>
                         <DollarSign className="h-4 w-4 mr-1" />
-                        Marcar como Pagado
-                      </button>
-                    )}
+                        Pagado {order.isPaid ? '✓' : ''}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-wrap gap-2">
+                      {!order.isPrepared && (
+                        <button
+                          onClick={() => markOrderPrepared(order.id)}
+                          className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+                        >
+                          <Clock className="h-4 w-4 mr-1" />
+                          Marcar como Preparado
+                        </button>
+                      )}
+                      
+                      {!order.isDelivered && (
+                        <button
+                          onClick={() => markOrderDelivered(order.id)}
+                          className="flex items-center px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
+                        >
+                          <Truck className="h-4 w-4 mr-1" />
+                          Marcar como Entregado
+                        </button>
+                      )}
+                      
+                      {!order.isPaid && (
+                        <button
+                          onClick={() => markOrderPaid(order.id)}
+                          className="flex items-center px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm"
+                        >
+                          <DollarSign className="h-4 w-4 mr-1" />
+                          Marcar como Pagado
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-gray-200 pt-4">
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={goToPreviousPage}
+                  disabled={currentPage === 0}
+                  className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    currentPage === 0
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Anterior
+                </button>
+                
+                <button
+                  onClick={goToNextPage}
+                  disabled={currentPage === totalPages - 1}
+                  className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    currentPage === totalPages - 1
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Siguiente
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </button>
               </div>
-            );
-          })}
-        </div>
+
+              <div className="flex items-center space-x-1">
+                <span className="text-sm text-gray-700 mr-2">Página:</span>
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => goToPage(i)}
+                    className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                      currentPage === i
+                        ? 'bg-amber-600 text-white'
+                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+
+              <div className="text-sm text-gray-700">
+                Página {currentPage + 1} de {totalPages}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
