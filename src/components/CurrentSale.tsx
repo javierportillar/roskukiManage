@@ -9,17 +9,29 @@ const CurrentSale: React.FC = () => {
     removeFromSale, 
     updateSaleItemQuantity, 
     completeSale,
-    isCompletingSale // New loading state
+    isCompletingSale // Loading state from context
   } = useAppContext();
 
   const total = currentSale.reduce((sum, item) => sum + item.total, 0);
 
   const handleQuantityChange = (id: string, newQuantity: number) => {
+    if (isCompletingSale) return; // Prevent changes during processing
+    
     if (newQuantity > 0) {
       updateSaleItemQuantity(id, newQuantity);
     } else {
       removeFromSale(id);
     }
+  };
+
+  const handleRemoveFromSale = (id: string) => {
+    if (isCompletingSale) return; // Prevent removal during processing
+    removeFromSale(id);
+  };
+
+  const handleCompleteSale = async () => {
+    if (isCompletingSale) return; // Prevent multiple clicks
+    await completeSale();
   };
 
   const getSaleTypeLabel = (saleType: string, boxQuantity?: number) => {
@@ -78,7 +90,7 @@ const CurrentSale: React.FC = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {currentSale.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
+                  <tr key={item.id} className={`hover:bg-gray-50 ${isCompletingSale ? 'opacity-60' : ''}`}>
                     <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
                       {item.flavor}
                     </td>
@@ -100,21 +112,25 @@ const CurrentSale: React.FC = () => {
                           type="button"
                           onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
                           disabled={isCompletingSale}
-                          className={`px-2 py-1 bg-gray-100 rounded-l border border-gray-300 hover:bg-gray-200 transition-colors ${
-                            isCompletingSale ? 'opacity-50 cursor-not-allowed' : ''
+                          className={`px-2 py-1 rounded-l border border-gray-300 transition-colors ${
+                            isCompletingSale 
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                              : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                           }`}
                         >
                           -
                         </button>
-                        <span className="w-10 py-1 text-center border-t border-b border-gray-300">
+                        <span className="w-10 py-1 text-center border-t border-b border-gray-300 bg-white">
                           {item.quantity}
                         </span>
                         <button
                           type="button"
                           onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
                           disabled={isCompletingSale}
-                          className={`px-2 py-1 bg-gray-100 rounded-r border border-gray-300 hover:bg-gray-200 transition-colors ${
-                            isCompletingSale ? 'opacity-50 cursor-not-allowed' : ''
+                          className={`px-2 py-1 rounded-r border border-gray-300 transition-colors ${
+                            isCompletingSale 
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                              : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                           }`}
                         >
                           +
@@ -126,11 +142,14 @@ const CurrentSale: React.FC = () => {
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
                       <button
-                        onClick={() => removeFromSale(item.id)}
+                        onClick={() => handleRemoveFromSale(item.id)}
                         disabled={isCompletingSale}
-                        className={`text-red-600 hover:text-red-800 transition-colors ${
-                          isCompletingSale ? 'opacity-50 cursor-not-allowed' : ''
+                        className={`transition-colors ${
+                          isCompletingSale 
+                            ? 'text-gray-400 cursor-not-allowed' 
+                            : 'text-red-600 hover:text-red-800'
                         }`}
+                        title={isCompletingSale ? 'Procesando venta...' : 'Eliminar item'}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -152,42 +171,48 @@ const CurrentSale: React.FC = () => {
             </table>
           </div>
 
-          <div className="mt-6 flex justify-center">
+          <div className="mt-6 flex flex-col items-center space-y-3">
             <button
               type="button"
-              onClick={completeSale}
+              onClick={handleCompleteSale}
               disabled={isButtonDisabled}
-              className={`py-2 px-6 rounded-md flex items-center space-x-2 transition-all duration-200 ${
+              className={`py-3 px-8 rounded-lg flex items-center space-x-3 transition-all duration-200 font-medium text-lg ${
                 isButtonDisabled
-                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                  : 'bg-amber-600 hover:bg-amber-700 text-white hover:shadow-lg transform hover:-translate-y-0.5'
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
+                  : 'bg-amber-600 hover:bg-amber-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1'
               }`}
             >
               {isCompletingSale ? (
                 <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Procesando...</span>
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <span>Procesando Venta...</span>
                 </>
               ) : (
                 <>
-                  <Save className="h-5 w-5" />
+                  <Save className="h-6 w-6" />
                   <span>Completar Venta</span>
                 </>
               )}
             </button>
+            
+            {/* Status messages */}
+            {!currentUser && !isCompletingSale && (
+              <p className="text-center text-sm text-red-500 bg-red-50 px-4 py-2 rounded-lg border border-red-200">
+                ⚠️ Debes seleccionar un cliente para completar la venta
+              </p>
+            )}
+            
+            {isCompletingSale && (
+              <div className="text-center">
+                <p className="text-sm text-blue-600 bg-blue-50 px-4 py-2 rounded-lg border border-blue-200 mb-2">
+                  🔄 Procesando venta, por favor espera...
+                </p>
+                <p className="text-xs text-gray-500">
+                  No cierres esta ventana ni hagas clic nuevamente
+                </p>
+              </div>
+            )}
           </div>
-          
-          {!currentUser && !isCompletingSale && (
-            <p className="mt-2 text-center text-sm text-red-500">
-              Debes seleccionar un cliente para completar la venta
-            </p>
-          )}
-          
-          {isCompletingSale && (
-            <p className="mt-2 text-center text-sm text-blue-600">
-              Procesando venta, por favor espera...
-            </p>
-          )}
         </div>
       )}
     </div>
