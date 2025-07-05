@@ -42,6 +42,7 @@ export interface AppContextType {
   
   // Sales
   currentSale: SaleItem[];
+  isCompletingSale: boolean; // New loading state
   addToSale: (flavor: string, size: string, quantity: number, price: number, saleType: SaleType, boxQuantity?: number) => void;
   removeFromSale: (id: string) => void;
   updateSaleItemQuantity: (id: string, quantity: number) => void;
@@ -88,6 +89,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isConnected, isLoading: supabaseLoading } = useSupabase();
   const [isLoading, setIsLoading] = useState(false);
+  const [isCompletingSale, setIsCompletingSale] = useState(false); // New state
 
   // Load data from localStorage or initialize with defaults
   const [users, setUsersState] = useState<User[]>(() => {
@@ -281,6 +283,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const syncData = async () => {
     if (!isConnected) return;
     await loadData();
+  };
+
+  // Helper function to calculate user statistics from sale items
+  const calculateUserStats = (saleItems: SaleItem[]) => {
+    let totalCookies = 0;
+    let box4Count = 0;
+    let box6Count = 0;
+
+    saleItems.forEach(item => {
+      if (item.saleType === 'unit') {
+        totalCookies += item.quantity;
+      } else if (item.saleType === 'box4') {
+        box4Count += item.quantity;
+        totalCookies += item.quantity; // Each box4 item represents 4 cookies
+      } else if (item.saleType === 'box6') {
+        box6Count += item.quantity;
+        totalCookies += item.quantity; // Each box6 item represents 6 cookies
+      }
+    });
+
+    return { totalCookies, box4Count, box6Count };
+  };
+
+  // Helper function to update user statistics
+  const updateUserStats = async (userId: string, saleItems: SaleItem[]) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+
+    const stats = calculateUserStats(saleItems);
+    
+    const updatedUser = {
+      ...user,
+      orderCount: user.orderCount + 1,
+      totalCookies: user.totalCookies + stats.totalCookies,
+      box4Count: user.box4Count + stats.box4Count,
+      box6Count: user.box6Count + stats.box6Count,
+    };
+
+    console.log('📊 Actualizando estadísticas del usuario:', {
+      usuario: user.name,
+      antes: {
+        pedidos: user.orderCount,
+        galletas: user.totalCookies,
+        cajas4: user.box4Count,
+        cajas6: user.box6Count
+      },
+      despues: {
+        pedidos: updatedUser.orderCount,
+        galletas: updatedUser.totalCookies,
+        cajas4: updatedUser.box4Count,
+        cajas6: updatedUser.box6Count
+      },
+      incremento: stats
+    });
+
+    try {
+      await updateUser(userId, {
+        orderCount: updatedUser.orderCount,
+        totalCookies: updatedUser.totalCookies,
+        box4Count: updatedUser.box4Count,
+        box6Count: updatedUser.box6Count,
+      });
+      
+      // Update current user if it's the same
+      if (currentUser && currentUser.id === userId) {
+        setCurrentUser(updatedUser);
+      }
+    } catch (error) {
+      console.error('Error actualizando estadísticas del usuario:', error);
+    }
   };
 
   // Helper function to add inventory movement
@@ -825,31 +897,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
   
   const completeSale = async () => {
-    if (!currentUser || currentSale.length === 0) return;
+    if (!currentUser || currentSale.length === 0 || isCompletingSale) return;
     
-    const saleTotal = currentSale.reduce((sum, item) => sum + item.total, 0);
+    setIsCompletingSale(true); // Set loading state
     
-    const saleData = {
-      userId: currentUser.id,
-      userName: currentUser.name,
-      items: [...currentSale],
-      total: saleTotal,
-    };
+    try {
+      const saleTotal = currentSale.reduce((sum, item) => sum + item.total, 0);
+      
+      const saleData = {
+        userId: currentUser.id,
+        userName: currentUser.name,
+        items: [...currentSale],
+        total: saleTotal,
+      };
 
-    if (isConnected) {
-      try {
-        console.log('Completando venta en Supabase:', saleData);
-        const newSale = await SupabaseService.createSale(saleData);
-        console.log('Venta completada:', newSale);
-        setSales([newSale, ...sales]);
-        
-        // Create order from sale
-        await addOrder(newSale);
-        
-        clearSale();
-      } catch (error) {
-        console.error('Error completing sale:', error);
-        // Fallback to local storage
+      if (isConnected) {
+        try {
+          console.log('Completando venta en Supabase:', saleData);
+          const newSale = await SupabaseService.createSale(saleData);
+          console.log('Venta completada:', newSale);
+          setSales([newSale, ...sales]);
+          
+          // Update user statistics
+          await updateUserStats(currentUser.id, currentSale);
+          
+          // Create order from sale
+          await addOrder(newSale);
+          
+          clearSale();
+        } catch (error) {
+          console.error('Error completing sale:', error);
+          // Fallback to local storage
+          const newSale: Sale = {
+            ...saleData,
+            id: uuidv4(),
+            date: new Date(),
+          };
+          
+          setSales([newSale, ...sales]);
+          
+          // Update user statistics
+          await updateUserStats(currentUser.id, currentSale);
+          
+          await addOrder(newSale);
+          clearSale();
+        }
+      } else {
+        // Local fallback
         const newSale: Sale = {
           ...saleData,
           id: uuidv4(),
@@ -857,20 +951,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
         
         setSales([newSale, ...sales]);
+        
+        // Update user statistics
+        await updateUserStats(currentUser.id, currentSale);
+        
         await addOrder(newSale);
         clearSale();
       }
-    } else {
-      // Local fallback
-      const newSale: Sale = {
-        ...saleData,
-        id: uuidv4(),
-        date: new Date(),
-      };
-      
-      setSales([newSale, ...sales]);
-      await addOrder(newSale);
-      clearSale();
+    } catch (error) {
+      console.error('Error completing sale:', error);
+      // You might want to show an error message to the user here
+    } finally {
+      setIsCompletingSale(false); // Reset loading state
     }
   };
   
@@ -987,6 +1079,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setInventory,
         
         currentSale,
+        isCompletingSale, // Add to context
         addToSale,
         removeFromSale,
         updateSaleItemQuantity,

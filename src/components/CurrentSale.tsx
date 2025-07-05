@@ -1,9 +1,16 @@
 import React from 'react';
 import { useAppContext } from '../context/AppContext';
-import { ShoppingCart, Trash2, Save, Package2 } from 'lucide-react';
+import { ShoppingCart, Trash2, Save, Package2, Loader2 } from 'lucide-react';
 
 const CurrentSale: React.FC = () => {
-  const { currentSale, currentUser, removeFromSale, updateSaleItemQuantity, completeSale } = useAppContext();
+  const { 
+    currentSale, 
+    currentUser, 
+    removeFromSale, 
+    updateSaleItemQuantity, 
+    completeSale,
+    isCompletingSale // New loading state
+  } = useAppContext();
 
   const total = currentSale.reduce((sum, item) => sum + item.total, 0);
 
@@ -18,15 +25,15 @@ const CurrentSale: React.FC = () => {
   const getSaleTypeLabel = (saleType: string, boxQuantity?: number) => {
     switch (saleType) {
       case 'box4':
-        // return `Caja x4 (${boxQuantity! * 4} galletas)`;
         return `Caja x4 (${boxQuantity} galletas)`;
       case 'box6':
-        // return `Caja x6 (${boxQuantity! * 6} galletas)`;
         return `Caja x6 (${boxQuantity} galletas)`;
       default:
         return 'Unidades';
     }
   };
+
+  const isButtonDisabled = !currentUser || currentSale.length === 0 || isCompletingSale;
 
   return (
     <div className="bg-white rounded-xl shadow-md p-5">
@@ -92,7 +99,10 @@ const CurrentSale: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                          className="px-2 py-1 bg-gray-100 rounded-l border border-gray-300 hover:bg-gray-200 transition-colors"
+                          disabled={isCompletingSale}
+                          className={`px-2 py-1 bg-gray-100 rounded-l border border-gray-300 hover:bg-gray-200 transition-colors ${
+                            isCompletingSale ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
                         >
                           -
                         </button>
@@ -102,7 +112,10 @@ const CurrentSale: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                          className="px-2 py-1 bg-gray-100 rounded-r border border-gray-300 hover:bg-gray-200 transition-colors"
+                          disabled={isCompletingSale}
+                          className={`px-2 py-1 bg-gray-100 rounded-r border border-gray-300 hover:bg-gray-200 transition-colors ${
+                            isCompletingSale ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
                         >
                           +
                         </button>
@@ -114,7 +127,10 @@ const CurrentSale: React.FC = () => {
                     <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         onClick={() => removeFromSale(item.id)}
-                        className="text-red-600 hover:text-red-800 transition-colors"
+                        disabled={isCompletingSale}
+                        className={`text-red-600 hover:text-red-800 transition-colors ${
+                          isCompletingSale ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -140,21 +156,36 @@ const CurrentSale: React.FC = () => {
             <button
               type="button"
               onClick={completeSale}
-              disabled={!currentUser || currentSale.length === 0}
-              className={`py-2 px-6 rounded-md flex items-center space-x-2 ${
-                currentUser && currentSale.length > 0
-                  ? 'bg-amber-600 hover:bg-amber-700 text-white'
-                  : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-              } transition-colors`}
+              disabled={isButtonDisabled}
+              className={`py-2 px-6 rounded-md flex items-center space-x-2 transition-all duration-200 ${
+                isButtonDisabled
+                  ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  : 'bg-amber-600 hover:bg-amber-700 text-white hover:shadow-lg transform hover:-translate-y-0.5'
+              }`}
             >
-              <Save className="h-5 w-5" />
-              <span>Completar Venta</span>
+              {isCompletingSale ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Procesando...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="h-5 w-5" />
+                  <span>Completar Venta</span>
+                </>
+              )}
             </button>
           </div>
           
-          {!currentUser && (
+          {!currentUser && !isCompletingSale && (
             <p className="mt-2 text-center text-sm text-red-500">
               Debes seleccionar un cliente para completar la venta
+            </p>
+          )}
+          
+          {isCompletingSale && (
+            <p className="mt-2 text-center text-sm text-blue-600">
+              Procesando venta, por favor espera...
             </p>
           )}
         </div>
