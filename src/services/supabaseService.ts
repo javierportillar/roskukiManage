@@ -359,6 +359,16 @@ export class SupabaseService {
     return this.mapOrderFromDB(data);
   }
 
+  // Nueva función para eliminar pedidos
+  static async deleteOrder(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('orders')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
   // Registros financieros
   static async getFinancialRecords(): Promise<FinancialRecord[]> {
     const { data, error } = await supabase

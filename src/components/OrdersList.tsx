@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { Order, SaleItem, OrderItem } from '../types';
-import { Package2, Clock, CheckCircle, Cookie, Truck, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Package2, Clock, CheckCircle, Cookie, Truck, DollarSign, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 
 const OrdersList: React.FC = () => {
-  const { orders, markOrderPrepared, markOrderDelivered, markOrderPaid } = useAppContext();
+  const { orders, markOrderPrepared, markOrderDelivered, markOrderPaid, deleteOrder } = useAppContext();
   const [currentPage, setCurrentPage] = useState(0);
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   const getSaleTypeLabel = (saleType: string, boxQuantity?: number) => {
@@ -77,6 +78,26 @@ const OrdersList: React.FC = () => {
     }
   };
 
+  const handleDeleteOrder = async (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    const confirmMessage = `¿Estás seguro de que quieres eliminar el pedido de ${order.userName}?\n\nEsta acción eliminará:\n- El pedido y todos sus items\n- Los registros financieros relacionados\n\nEsta acción NO se puede deshacer.`;
+    
+    if (window.confirm(confirmMessage)) {
+      setDeletingOrderId(orderId);
+      try {
+        await deleteOrder(orderId);
+        console.log('✅ Pedido eliminado exitosamente');
+      } catch (error) {
+        console.error('❌ Error eliminando pedido:', error);
+        alert('Error al eliminar el pedido. Por favor intenta de nuevo.');
+      } finally {
+        setDeletingOrderId(null);
+      }
+    }
+  };
+
   // Sort orders: pending first, then by date
   const sortedOrders = [...orders].sort((a, b) => {
     const statusA = getOrderStatus(a);
@@ -137,12 +158,27 @@ const OrdersList: React.FC = () => {
               const status = getOrderStatus(order);
               const totalCookies = getTotalCookies(order.items);
               const summary = getOrderSummary(order.items);
+              const isDeleting = deletingOrderId === order.id;
 
               return (
-                <div key={order.id} className={`border rounded-lg p-4 ${getStatusColor(status)}`}>
+                <div key={order.id} className={`border rounded-lg p-4 ${getStatusColor(status)} ${isDeleting ? 'opacity-50' : ''}`}>
                   <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="font-semibold text-lg">{order.userName}</h3>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold text-lg">{order.userName}</h3>
+                        <button
+                          onClick={() => handleDeleteOrder(order.id)}
+                          disabled={isDeleting}
+                          className={`p-2 rounded-full transition-colors ${
+                            isDeleting 
+                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                              : 'bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-800'
+                          }`}
+                          title={isDeleting ? 'Eliminando...' : 'Eliminar pedido'}
+                        >
+                          <Trash2 className={`h-4 w-4 ${isDeleting ? 'animate-pulse' : ''}`} />
+                        </button>
+                      </div>
                       <p className="text-sm opacity-75">
                         Pedido: {new Date(order.date).toLocaleDateString()} {new Date(order.date).toLocaleTimeString()}
                       </p>
@@ -162,7 +198,7 @@ const OrdersList: React.FC = () => {
                         </p>
                       )}
                     </div>
-                    <div className="text-right">
+                    <div className="text-right ml-4">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
                         {getStatusLabel(status)}
                       </span>
@@ -261,7 +297,7 @@ const OrdersList: React.FC = () => {
 
                     {/* Action Buttons */}
                     <div className="flex flex-wrap gap-2">
-                      {!order.isPrepared && (
+                      {!order.isPrepared && !isDeleting && (
                         <button
                           onClick={() => markOrderPrepared(order.id)}
                           className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
@@ -271,7 +307,7 @@ const OrdersList: React.FC = () => {
                         </button>
                       )}
                       
-                      {!order.isDelivered && (
+                      {!order.isDelivered && !isDeleting && (
                         <button
                           onClick={() => markOrderDelivered(order.id)}
                           className="flex items-center px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
@@ -281,7 +317,7 @@ const OrdersList: React.FC = () => {
                         </button>
                       )}
                       
-                      {!order.isPaid && (
+                      {!order.isPaid && !isDeleting && (
                         <button
                           onClick={() => markOrderPaid(order.id)}
                           className="flex items-center px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm"
@@ -289,6 +325,13 @@ const OrdersList: React.FC = () => {
                           <DollarSign className="h-4 w-4 mr-1" />
                           Marcar como Pagado
                         </button>
+                      )}
+
+                      {isDeleting && (
+                        <div className="flex items-center px-3 py-2 bg-gray-200 text-gray-500 rounded-md text-sm">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-500 mr-2"></div>
+                          Eliminando pedido...
+                        </div>
                       )}
                     </div>
                   </div>
