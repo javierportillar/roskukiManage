@@ -98,17 +98,23 @@ const OrdersList: React.FC = () => {
     }
   };
 
-  // Sort orders: pending first, then by date
-  const sortedOrders = [...orders].sort((a, b) => {
-    const statusA = getOrderStatus(a);
-    const statusB = getOrderStatus(b);
+  // Sort orders: pending first, then by creation date (NOT updated_at)
+  // This ensures that updating order status doesn't change the position
+  // const sortedOrders = [...orders].sort((a, b) => {
+  //   const statusA = getOrderStatus(a);
+  //   const statusB = getOrderStatus(b);
     
-    if (statusA === 'pending' && statusB !== 'pending') return -1;
-    if (statusA !== 'pending' && statusB === 'pending') return 1;
+  //   // Pending orders first
+  //   if (statusA === 'pending' && statusB !== 'pending') return -1;
+  //   if (statusA !== 'pending' && statusB === 'pending') return 1;
     
-    return new Date(b.date).getTime() - new Date(a.date).getTime();
-  });
+  //   // Then sort by creation date (newest first) - this maintains original order
+  //   return new Date(b.date).getTime() - new Date(a.date).getTime();
+  // });
 
+  const sortedOrders = [...orders].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
   // Pagination logic
   const totalPages = Math.ceil(sortedOrders.length / itemsPerPage);
   const startIndex = currentPage * itemsPerPage;
@@ -166,18 +172,20 @@ const OrdersList: React.FC = () => {
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <h3 className="font-semibold text-lg">{order.userName}</h3>
-                        <button
-                          onClick={() => handleDeleteOrder(order.id)}
-                          disabled={isDeleting}
-                          className={`p-2 rounded-full transition-colors ${
-                            isDeleting 
-                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                              : 'bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-800'
-                          }`}
-                          title={isDeleting ? 'Eliminando...' : 'Eliminar pedido'}
-                        >
-                          <Trash2 className={`h-4 w-4 ${isDeleting ? 'animate-pulse' : ''}`} />
-                        </button>
+                        {!order.isDelivered && (
+                          <button
+                            onClick={() => handleDeleteOrder(order.id)}
+                            disabled={isDeleting}
+                            className={`p-2 rounded-full transition-colors ${
+                              isDeleting
+                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                : 'bg-red-100 text-red-600 hover:bg-red-200 hover:text-red-800'
+                            }`}
+                            title={isDeleting ? 'Eliminando...' : 'Eliminar pedido'}
+                          >
+                            <Trash2 className={`h-4 w-4 ${isDeleting ? 'animate-pulse' : ''}`} />
+                          </button>
+                        )}
                       </div>
                       <p className="text-sm opacity-75">
                         Pedido: {new Date(order.date).toLocaleDateString()} {new Date(order.date).toLocaleTimeString()}
