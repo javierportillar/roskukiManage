@@ -59,6 +59,7 @@ export interface AppContextType {
   markOrderPrepared: (orderId: string) => Promise<void>;
   markOrderDelivered: (orderId: string) => Promise<void>;
   markOrderPaid: (orderId: string) => Promise<void>;
+  deleteOrder: (orderId: string) => Promise<void>; // Nueva función
   setOrders: (orders: Order[]) => void;
   
   // Financial Records
@@ -895,6 +896,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setOrders(orders.map(o => (o.id === orderId ? { ...o, isPaid: true, paidDate: new Date() } : o)));
     }
   };
+
+  // Nueva función para eliminar pedidos
+  const deleteOrder = async (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    console.log('🗑️ Eliminando pedido:', orderId);
+
+    if (isConnected) {
+      try {
+        console.log('☁️ Eliminando en Supabase...');
+        await SupabaseService.deleteOrder(orderId);
+        
+        // Eliminar del estado local
+        setOrders(orders.filter(o => o.id !== orderId));
+        
+        // Eliminar registros financieros relacionados
+        const relatedFinancialRecords = financialRecords.filter(record => record.orderId === orderId);
+        for (const record of relatedFinancialRecords) {
+          await SupabaseService.deleteFinancialRecord(record.id);
+        }
+        setFinancialRecords(financialRecords.filter(record => record.orderId !== orderId));
+        
+        console.log('✅ Pedido eliminado exitosamente');
+      } catch (error) {
+        console.error('❌ Error eliminando pedido en Supabase:', error);
+        // Fallback to local delete
+        setOrders(orders.filter(o => o.id !== orderId));
+        setFinancialRecords(financialRecords.filter(record => record.orderId !== orderId));
+      }
+    } else {
+      // Local fallback
+      console.log('💻 Modo local: eliminando pedido');
+      setOrders(orders.filter(o => o.id !== orderId));
+      setFinancialRecords(financialRecords.filter(record => record.orderId !== orderId));
+    }
+  };
   
   const completeSale = async () => {
     if (!currentUser || currentSale.length === 0 || isCompletingSale) return;
@@ -1094,6 +1132,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markOrderPrepared,
         markOrderDelivered,
         markOrderPaid,
+        deleteOrder, // Nueva función añadida al contexto
         setOrders,
 
         financialRecords,
