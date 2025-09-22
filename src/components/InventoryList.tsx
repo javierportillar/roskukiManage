@@ -152,7 +152,7 @@ const InventoryList: React.FC = () => {
               <p className="text-xs text-amber-600 mt-1">En inventario</p>
             </div>
             
-            <div className="bg-purple-50 rounded-lg p-4 border border-purple-100">
+            {/* <div className="bg-purple-50 rounded-lg p-4 border border-purple-100">
               <div className="flex justify-between items-center">
                 <h3 className="text-sm font-medium text-purple-800">Sabores Únicos</h3>
                 <Package className="h-4 w-4 text-purple-600" />
@@ -161,7 +161,7 @@ const InventoryList: React.FC = () => {
                 {Object.keys(groupedInventory).length}
               </p>
               <p className="text-xs text-purple-600 mt-1">Diferentes</p>
-            </div>
+            </div> */}
           </div>
         )}
       </div>
